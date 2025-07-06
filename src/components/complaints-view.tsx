@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -74,7 +75,7 @@ function MapContentUpdater({ complaints }: { complaints: Complaint[] }) {
     useEffect(() => {
         if (complaints.length > 0) {
             const [lat, lng] = complaints[0].location.split(',').map(Number);
-            map.flyTo([lat, lng], 14);
+            map.flyTo([lat, lng], 14, { animate: true, duration: 1 });
         }
     }, [complaints, map]);
 
@@ -161,7 +162,7 @@ export function ComplaintsView() {
                     </Button>
                 </form>
 
-                <div className={cn("relative", !searched && "hidden")}>
+                <div className={cn("relative transition-opacity", !searched && "h-0 overflow-hidden opacity-0")}>
                     {isSearching && (
                         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center p-12 bg-background/80 rounded-md">
                             <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
@@ -171,10 +172,10 @@ export function ComplaintsView() {
                         </div>
                     )}
                     
-                    <div className={cn(isSearching ? 'opacity-0' : 'opacity-100', 'transition-opacity')}>
+                    <div className={cn(isSearching ? 'opacity-50 pointer-events-none' : 'opacity-100', 'transition-opacity')}>
                         <ComplaintsMap complaints={complaints} />
 
-                        {complaints.length > 0 ? (
+                        {!isSearching && complaints.length > 0 ? (
                            <div className="space-y-4 mt-8">
                                 {complaints.map(complaint => (
                                     <Card key={complaint.id} className="flex flex-col sm:flex-row items-start gap-4 p-4 hover:bg-secondary/50 transition-colors">
@@ -214,9 +215,11 @@ export function ComplaintsView() {
                                 ))}
                             </div>
                         ) : (
-                             <div className="text-center p-12 text-muted-foreground">
-                                <p>No complaints found for the specified route.</p>
-                            </div>
+                             !isSearching && (
+                                <div className="text-center p-12 text-muted-foreground">
+                                    <p>No complaints found for the specified route.</p>
+                                </div>
+                             )
                         )}
                     </div>
                 </div>
