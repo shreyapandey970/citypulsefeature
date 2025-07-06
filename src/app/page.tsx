@@ -1,5 +1,7 @@
 import { EnviroCheckForm } from '@/components/enviro-check-form';
-import { Leaf } from 'lucide-react';
+import { ComplaintsView } from '@/components/complaints-view';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Leaf, ListChecks } from 'lucide-react';
 
 export default function Home() {
   return (
@@ -14,11 +16,28 @@ export default function Home() {
           </h1>
         </div>
         <p className="text-muted-foreground mt-2 text-lg">
-          Help keep our environment clean. Report potholes and garbage with AI
-          assistance.
+          Help keep our environment clean. Report issues or view existing ones on your route.
         </p>
       </header>
-      <EnviroCheckForm />
+      
+      <Tabs defaultValue="report" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="report">
+            <Leaf className="mr-2 h-4 w-4" />
+            Report Issue
+          </TabsTrigger>
+          <TabsTrigger value="view">
+            <ListChecks className="mr-2 h-4 w-4" />
+            View Complaints
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="report" className="mt-6">
+          <EnviroCheckForm />
+        </TabsContent>
+        <TabsContent value="view" className="mt-6">
+          <ComplaintsView />
+        </TabsContent>
+      </Tabs>
     </main>
   );
 }
