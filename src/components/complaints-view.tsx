@@ -8,16 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PotholeIcon } from "@/components/icons/pothole-icon";
 import { Trash2, LightbulbOff, TreeDeciduous, Search, MapPin, Loader2 } from 'lucide-react';
+import { getReports } from '@/lib/firebase/service';
 
-const MOCK_COMPLAINTS = [
-    { id: '1', issueType: 'pothole' as const, location: '40.7128, -74.0060', severity: 'high' as const, description: 'Large pothole on main street, very dangerous.', imageUrl: 'https://placehold.co/150x100.png', dataAiHint: 'pothole road' },
-    { id: '2', issueType: 'garbage' as const, location: '40.7135, -74.0072', severity: 'medium' as const, description: 'Overflowing trash can at park entrance, attracting pests.', imageUrl: 'https://placehold.co/150x100.png', dataAiHint: 'garbage park' },
-    { id: '3', issueType: 'streetlight' as const, location: '40.7140, -74.0080', severity: 'high' as const, description: 'Streetlight out at a busy intersection.', imageUrl: 'https://placehold.co/150x100.png', dataAiHint: 'streetlight dark' },
-    { id: '4', issueType: 'fallen_tree' as const, location: '40.7150, -74.0090', severity: 'low' as const, description: 'Small branch blocking a portion of the sidewalk.', imageUrl: 'https://placehold.co/150x100.png', dataAiHint: 'fallen tree' },
-    { id: '5', issueType: 'pothole' as const, location: '40.7160, -74.0100', severity: 'medium' as const, description: 'Cluster of small potholes on a residential street.', imageUrl: 'https://placehold.co/150x100.png', dataAiHint: 'pothole street' },
-];
+type IssueType = 'pothole' | 'garbage' | 'streetlight' | 'fallen_tree' | 'other';
 
-type Complaint = typeof MOCK_COMPLAINTS[0];
+type Complaint = {
+    id: string;
+    issueType: IssueType;
+    location: string;
+    severity: 'high' | 'medium' | 'low';
+    description: string;
+    imageUrl: string;
+    dataAiHint?: string;
+};
 
 const IssueIcon = ({ issueType, className }: { issueType: Complaint['issueType'], className?: string }) => {
     const classes = className || "w-5 h-5 text-primary";
@@ -37,15 +40,28 @@ export function ComplaintsView() {
     const [isSearching, setIsSearching] = useState(false);
     const [searchAttempted, setSearchAttempted] = useState(false);
 
-    const handleSearch = (e: React.FormEvent) => {
+    const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSearching(true);
         setSearchAttempted(true);
-        // Mock API call
-        setTimeout(() => {
-            setComplaints(MOCK_COMPLAINTS);
+        try {
+            const reportsFromDb = await getReports();
+            const formattedComplaints: Complaint[] = reportsFromDb.map((report: any) => ({
+                id: report.id,
+                issueType: report.issueType,
+                location: report.location,
+                severity: report.assessmentResult.severity,
+                description: report.assessmentResult.justification,
+                imageUrl: report.imageDataUri,
+                dataAiHint: report.issueType,
+            }));
+            setComplaints(formattedComplaints);
+        } catch (error) {
+            console.error("Failed to fetch complaints:", error);
+            setComplaints([]);
+        } finally {
             setIsSearching(false);
-        }, 1500);
+        }
     };
 
     const renderComplaints = () => {
@@ -54,7 +70,7 @@ export function ComplaintsView() {
                 <div className="flex flex-col items-center justify-center text-center p-12">
                     <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
                     <p className="text-lg text-muted-foreground font-semibold">
-                        Finding complaints on your route...
+                        Finding complaints...
                     </p>
                 </div>
             );
@@ -106,7 +122,7 @@ export function ComplaintsView() {
         if (searchAttempted) {
             return (
                 <div className="text-center p-12 text-muted-foreground bg-secondary/30 rounded-md">
-                    <p>No complaints found for the specified route.</p>
+                    <p>No complaints found. Be the first to submit one!</p>
                 </div>
             );
         }
@@ -117,9 +133,9 @@ export function ComplaintsView() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="font-headline text-2xl">View Complaints on Route</CardTitle>
+                <CardTitle className="font-headline text-2xl">View All Complaints</CardTitle>
                 <CardDescription>
-                    Enter a start and destination to see reported issues along your route.
+                    Click search to see all reported issues.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -128,15 +144,13 @@ export function ComplaintsView() {
                         placeholder="Start point, e.g., 'City Hall, New York'" 
                         value={startPoint} 
                         onChange={(e) => setStartPoint(e.target.value)}
-                        required
                     />
                     <Input 
                         placeholder="Destination, e.g., 'Central Park, New York'" 
                         value={destination} 
                         onChange={(e) => setDestination(e.target.value)}
-                        required
                     />
-                    <Button type="submit" disabled={isSearching || !startPoint || !destination} className="sm:w-auto w-full">
+                    <Button type="submit" disabled={isSearching} className="sm:w-auto w-full">
                         {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
                         {isSearching ? 'Searching...' : 'Search'}
                     </Button>

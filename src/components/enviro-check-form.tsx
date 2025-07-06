@@ -40,6 +40,7 @@ import { useToast } from "@/hooks/use-toast";
 
 import { identifyObject, IdentifyObjectOutput } from "@/ai/flows/identify-object";
 import { assessSeverity, AssessSeverityOutput } from "@/ai/flows/assess-severity";
+import { createReport } from "@/lib/firebase/service";
 
 type Step = "input" | "identifying" | "confirmation" | "assessing" | "result";
 type IssueType = "pothole" | "garbage" | "streetlight" | "fallen_tree" | "other";
@@ -149,6 +150,15 @@ export function EnviroCheckForm() {
         isConfirmed: true,
       });
       setAssessmentResult(result);
+
+      await createReport({
+        issueType: finalIssueType,
+        location,
+        imageDataUri,
+        identificationResult,
+        assessmentResult: result,
+      });
+
       setStep("result");
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "An unknown error occurred.";
