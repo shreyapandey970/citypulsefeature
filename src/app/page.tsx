@@ -1,7 +1,7 @@
 import { EnviroCheckForm } from '@/components/enviro-check-form';
 import { ComplaintsView } from '@/components/complaints-view';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Leaf, ListChecks } from 'lucide-react';
+import { Building2, ListChecks } from 'lucide-react';
 
 export default function Home() {
   return (
@@ -9,7 +9,7 @@ export default function Home() {
       <header className="text-center mb-8">
         <div className="inline-flex items-center gap-3">
           <div className="p-3 bg-primary/20 rounded-lg">
-            <Leaf className="w-8 h-8 text-primary" />
+            <Building2 className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-4xl md:text-5xl font-headline font-bold text-foreground">
             CityPulseAI
@@ -23,7 +23,7 @@ export default function Home() {
       <Tabs defaultValue="report" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="report">
-            <Leaf className="mr-2 h-4 w-4" />
+            <Building2 className="mr-2 h-4 w-4" />
             Report Issue
           </TabsTrigger>
           <TabsTrigger value="view">
