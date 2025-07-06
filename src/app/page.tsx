@@ -12,7 +12,7 @@ export default function Home() {
             <Leaf className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-4xl md:text-5xl font-headline font-bold text-foreground">
-            EnviroCheck
+            CityPulseAI
           </h1>
         </div>
         <p className="text-muted-foreground mt-2 text-lg">
