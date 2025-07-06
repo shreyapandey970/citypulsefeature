@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PotholeIcon } from "@/components/icons/pothole-icon";
-import { Trash2, LightbulbOff, TreeDeciduous, Search, MapPin, Loader2 } from 'lucide-react';
+import { Trash2, LightbulbOff, TreeDeciduous, Search, MapPin, Loader2, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import dynamic from 'next/dynamic';
@@ -118,20 +118,90 @@ export function ComplaintsView() {
     const [destination, setDestination] = useState('');
     const [complaints, setComplaints] = useState<Complaint[]>([]);
     const [isSearching, setIsSearching] = useState(false);
-    const [searched, setSearched] = useState(false);
+    const [searchAttempted, setSearchAttempted] = useState(false);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         setIsSearching(true);
-        if (!searched) {
-            setSearched(true);
-        }
+        setSearchAttempted(true);
         // In a real app, you'd fetch data based on the route.
         // For now, we'll just show the mock data after a short delay.
         setTimeout(() => {
             setComplaints(MOCK_COMPLAINTS);
             setIsSearching(false);
         }, 1500);
+    };
+    
+    const renderContent = () => {
+        if (isSearching) {
+            return (
+                <div className="flex flex-col items-center justify-center text-center p-12">
+                    <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
+                    <p className="text-lg text-muted-foreground font-semibold">
+                        Finding complaints on your route...
+                    </p>
+                </div>
+            );
+        }
+
+        if (!searchAttempted) {
+             return (
+                <div className="text-center p-12 text-muted-foreground bg-secondary/30 rounded-md border border-dashed">
+                    <Info className="w-12 h-12 text-primary mx-auto mb-4" />
+                    <p className="font-semibold text-lg">Find issues on your path</p>
+                    <p>Enter a start and destination to see complaints on the map and in a list below.</p>
+                </div>
+            );
+        }
+
+        if (complaints.length > 0) {
+            return (
+                 <div className="space-y-4 mt-8">
+                    {complaints.map(complaint => (
+                        <Card key={complaint.id} className="flex flex-col sm:flex-row items-start gap-4 p-4 hover:bg-secondary/50 transition-colors">
+                            <Image 
+                                src={complaint.imageUrl}
+                                alt={complaint.issueType}
+                                width={150}
+                                height={100}
+                                className="rounded-md object-cover w-full sm:w-[150px] aspect-[3/2] sm:aspect-auto"
+                                data-ai-hint={complaint.dataAiHint}
+                            />
+                            <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <IssueIcon issueType={complaint.issueType} />
+                                        <h3 className="font-semibold capitalize text-lg">
+                                            {complaint.issueType.replace(/_/g, ' ')}
+                                        </h3>
+                                    </div>
+                                    <Badge
+                                        variant={
+                                            complaint.severity === 'high' ? 'destructive' :
+                                            complaint.severity === 'medium' ? 'secondary' : 'default'
+                                        }
+                                        className="capitalize"
+                                    >
+                                        {complaint.severity}
+                                    </Badge>
+                                </div>
+                                <p className="text-muted-foreground mt-1 text-sm">{complaint.description}</p>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                                    <MapPin className="w-4 h-4" />
+                                    <span>{complaint.location}</span>
+                                </div>
+                            </div>
+                        </Card>
+                    ))}
+                </div>
+            );
+        }
+        
+        return (
+             <div className="text-center p-12 text-muted-foreground bg-secondary/30 rounded-md">
+                <p>No complaints found for the specified route.</p>
+            </div>
+        );
     };
 
     return (
@@ -143,7 +213,7 @@ export function ComplaintsView() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4 mb-8">
+                <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4 mb-6">
                     <Input 
                         placeholder="Start point, e.g., 'City Hall, New York'" 
                         value={startPoint} 
@@ -162,66 +232,12 @@ export function ComplaintsView() {
                     </Button>
                 </form>
 
-                <div className={cn("relative transition-opacity", !searched && "h-0 overflow-hidden opacity-0")}>
-                    {isSearching && (
-                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center p-12 bg-background/80 rounded-md">
-                            <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
-                            <p className="text-lg text-muted-foreground font-semibold">
-                                Finding complaints on your route...
-                            </p>
-                        </div>
-                    )}
-                    
-                    <div className={cn(isSearching ? 'opacity-50 pointer-events-none' : 'opacity-100', 'transition-opacity')}>
-                        <ComplaintsMap complaints={complaints} />
-
-                        {!isSearching && complaints.length > 0 ? (
-                           <div className="space-y-4 mt-8">
-                                {complaints.map(complaint => (
-                                    <Card key={complaint.id} className="flex flex-col sm:flex-row items-start gap-4 p-4 hover:bg-secondary/50 transition-colors">
-                                        <Image 
-                                            src={complaint.imageUrl}
-                                            alt={complaint.issueType}
-                                            width={150}
-                                            height={100}
-                                            className="rounded-md object-cover w-full sm:w-[150px] aspect-[3/2] sm:aspect-auto"
-                                            data-ai-hint={complaint.dataAiHint}
-                                        />
-                                        <div className="flex-1">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <IssueIcon issueType={complaint.issueType} />
-                                                    <h3 className="font-semibold capitalize text-lg">
-                                                        {complaint.issueType.replace(/_/g, ' ')}
-                                                    </h3>
-                                                </div>
-                                                <Badge
-                                                    variant={
-                                                        complaint.severity === 'high' ? 'destructive' :
-                                                        complaint.severity === 'medium' ? 'secondary' : 'default'
-                                                    }
-                                                    className="capitalize"
-                                                >
-                                                    {complaint.severity}
-                                                </Badge>
-                                            </div>
-                                            <p className="text-muted-foreground mt-1 text-sm">{complaint.description}</p>
-                                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
-                                                <MapPin className="w-4 h-4" />
-                                                <span>{complaint.location}</span>
-                                            </div>
-                                        </div>
-                                    </Card>
-                                ))}
-                            </div>
-                        ) : (
-                             !isSearching && (
-                                <div className="text-center p-12 text-muted-foreground">
-                                    <p>No complaints found for the specified route.</p>
-                                </div>
-                             )
-                        )}
-                    </div>
+                <div className="mb-6">
+                  <ComplaintsMap complaints={complaints} />
+                </div>
+                
+                <div className="relative">
+                   {renderContent()}
                 </div>
             </CardContent>
         </Card>
