@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -9,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PotholeIcon } from "@/components/icons/pothole-icon";
 import { Trash2, LightbulbOff, TreeDeciduous, Search, MapPin, Loader2, Info } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
@@ -100,15 +98,13 @@ const ComplaintsMap = ({ complaints }: { complaints: Complaint[] }) => {
     const center: LatLngExpression = [40.7128, -74.0060]; // Default center
 
     return (
-        <div className="h-[400px] w-full rounded-md overflow-hidden border">
-            <MapContainer center={center} zoom={13} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>
-                <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <MapContentUpdater complaints={complaints} />
-            </MapContainer>
-        </div>
+        <MapContainer center={center} zoom={13} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>
+            <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <MapContentUpdater complaints={complaints} />
+        </MapContainer>
     );
 };
 
@@ -124,32 +120,22 @@ export function ComplaintsView() {
         e.preventDefault();
         setIsSearching(true);
         setSearchAttempted(true);
-        // In a real app, you'd fetch data based on the route.
-        // For now, we'll just show the mock data after a short delay.
+        
         setTimeout(() => {
             setComplaints(MOCK_COMPLAINTS);
             setIsSearching(false);
         }, 1500);
     };
     
-    const renderContent = () => {
+    const renderComplaintsList = () => {
+        if (!searchAttempted) {
+             return null;
+        }
+        
         if (isSearching) {
             return (
-                <div className="flex flex-col items-center justify-center text-center p-12">
+                <div className="flex flex-col items-center justify-center text-center p-12 mt-8">
                     <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
-                    <p className="text-lg text-muted-foreground font-semibold">
-                        Finding complaints on your route...
-                    </p>
-                </div>
-            );
-        }
-
-        if (!searchAttempted) {
-             return (
-                <div className="text-center p-12 text-muted-foreground bg-secondary/30 rounded-md border border-dashed">
-                    <Info className="w-12 h-12 text-primary mx-auto mb-4" />
-                    <p className="font-semibold text-lg">Find issues on your path</p>
-                    <p>Enter a start and destination to see complaints on the map and in a list below.</p>
                 </div>
             );
         }
@@ -198,7 +184,7 @@ export function ComplaintsView() {
         }
         
         return (
-             <div className="text-center p-12 text-muted-foreground bg-secondary/30 rounded-md">
+             <div className="text-center p-12 text-muted-foreground bg-secondary/30 rounded-md mt-8">
                 <p>No complaints found for the specified route.</p>
             </div>
         );
@@ -232,13 +218,29 @@ export function ComplaintsView() {
                     </Button>
                 </form>
 
-                <div className="mb-6">
-                  <ComplaintsMap complaints={complaints} />
+                <div className="relative h-[400px] w-full rounded-md overflow-hidden border">
+                    {/* The map is always rendered */}
+                    <ComplaintsMap complaints={complaints} />
+
+                    {/* Overlays are rendered on top */}
+                    {isSearching && (
+                         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center bg-background/80 backdrop-blur-sm">
+                            <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
+                            <p className="text-lg text-muted-foreground font-semibold">
+                                Finding complaints...
+                            </p>
+                        </div>
+                    )}
+                    {!searchAttempted && (
+                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center p-12 text-muted-foreground bg-secondary/30">
+                            <Info className="w-12 h-12 text-primary mx-auto mb-4" />
+                            <p className="font-semibold text-lg">Find issues on your path</p>
+                            <p>Enter a start and destination to see complaints on the map.</p>
+                        </div>
+                    )}
                 </div>
                 
-                <div className="relative">
-                   {renderContent()}
-                </div>
+                {renderComplaintsList()}
             </CardContent>
         </Card>
     );
