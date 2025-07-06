@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,7 @@ const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapCo
 const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
 const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
+const useMap = dynamic(() => import('react-leaflet').then(mod => mod.useMap), { ssr: false });
 
 const getIconSvg = (issueType: Complaint['issueType']) => {
     const strokeColor = "hsl(var(--primary))";
@@ -67,37 +68,48 @@ const createIssueIcon = (complaint: Complaint) => {
     });
 };
 
-const ComplaintsMap = ({ complaints }: { complaints: Complaint[] }) => {
-    const center: LatLngExpression = useMemo(() => {
+function MapContentUpdater({ complaints }: { complaints: Complaint[] }) {
+    const map = useMap();
+    useEffect(() => {
         if (complaints.length > 0) {
             const [lat, lng] = complaints[0].location.split(',').map(Number);
-            return [lat, lng];
+            map.flyTo([lat, lng], 14);
         }
-        return [40.7128, -74.0060]; // Default center (NYC)
-    }, [complaints]);
+    }, [complaints, map]);
 
     return (
-        <div className="h-[400px] w-full rounded-md overflow-hidden border mb-8">
-            <MapContainer center={center} zoom={14} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>
+        <>
+            {complaints.map(complaint => {
+                const position = complaint.location.split(',').map(Number) as LatLngExpression;
+                return (
+                    <Marker key={complaint.id} position={position} icon={createIssueIcon(complaint)}>
+                        <Popup>
+                            <div className="font-semibold capitalize">{complaint.issueType.replace(/_/g, ' ')}</div>
+                            <p>{complaint.description}</p>
+                        </Popup>
+                    </Marker>
+                )
+            })}
+        </>
+    );
+}
+
+const ComplaintsMap = ({ complaints }: { complaints: Complaint[] }) => {
+    const center: LatLngExpression = [40.7128, -74.0060]; // Default center
+
+    return (
+        <div className="h-[400px] w-full rounded-md overflow-hidden border">
+            <MapContainer center={center} zoom={13} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                {complaints.map(complaint => {
-                    const position = complaint.location.split(',').map(Number) as LatLngExpression;
-                    return (
-                        <Marker key={complaint.id} position={position} icon={createIssueIcon(complaint)}>
-                            <Popup>
-                                <div className="font-semibold capitalize">{complaint.issueType.replace(/_/g, ' ')}</div>
-                                <p>{complaint.description}</p>
-                            </Popup>
-                        </Marker>
-                    )
-                })}
+                <MapContentUpdater complaints={complaints} />
             </MapContainer>
         </div>
     );
 };
+
 
 export function ComplaintsView() {
     const [startPoint, setStartPoint] = useState('');
@@ -109,14 +121,12 @@ export function ComplaintsView() {
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         setIsSearching(true);
-        setSearched(false);
-        setComplaints([]);
+        setSearched(true);
         // In a real app, you'd fetch data based on the route.
         // For now, we'll just show the mock data after a short delay.
         setTimeout(() => {
             setComplaints(MOCK_COMPLAINTS);
             setIsSearching(false);
-            setSearched(true);
         }, 1500);
     };
 
@@ -156,55 +166,56 @@ export function ComplaintsView() {
                         </p>
                     </div>
                 )}
-
-                {!isSearching && searched && complaints.length === 0 && (
-                    <div className="text-center p-12 text-muted-foreground">
-                        <p>No complaints found for the specified route.</p>
-                    </div>
-                )}
                 
-                {!isSearching && complaints.length > 0 && (
-                    <>
+                {searched && (
+                    <div className={isSearching ? 'hidden' : ''}>
                         <ComplaintsMap complaints={complaints} />
-                        <div className="space-y-4">
-                            {complaints.map(complaint => (
-                                <Card key={complaint.id} className="flex flex-col sm:flex-row items-start gap-4 p-4 hover:bg-secondary/50 transition-colors">
-                                    <Image 
-                                        src={complaint.imageUrl}
-                                        alt={complaint.issueType}
-                                        width={150}
-                                        height={100}
-                                        className="rounded-md object-cover w-full sm:w-[150px] aspect-[3/2] sm:aspect-auto"
-                                        data-ai-hint={complaint.dataAiHint}
-                                    />
-                                    <div className="flex-1">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <IssueIcon issueType={complaint.issueType} />
-                                                <h3 className="font-semibold capitalize text-lg">
-                                                    {complaint.issueType.replace(/_/g, ' ')}
-                                                </h3>
+
+                        {complaints.length > 0 ? (
+                           <div className="space-y-4 mt-8">
+                                {complaints.map(complaint => (
+                                    <Card key={complaint.id} className="flex flex-col sm:flex-row items-start gap-4 p-4 hover:bg-secondary/50 transition-colors">
+                                        <Image 
+                                            src={complaint.imageUrl}
+                                            alt={complaint.issueType}
+                                            width={150}
+                                            height={100}
+                                            className="rounded-md object-cover w-full sm:w-[150px] aspect-[3/2] sm:aspect-auto"
+                                            data-ai-hint={complaint.dataAiHint}
+                                        />
+                                        <div className="flex-1">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <IssueIcon issueType={complaint.issueType} />
+                                                    <h3 className="font-semibold capitalize text-lg">
+                                                        {complaint.issueType.replace(/_/g, ' ')}
+                                                    </h3>
+                                                </div>
+                                                <Badge
+                                                    variant={
+                                                        complaint.severity === 'high' ? 'destructive' :
+                                                        complaint.severity === 'medium' ? 'secondary' : 'default'
+                                                    }
+                                                    className="capitalize"
+                                                >
+                                                    {complaint.severity}
+                                                </Badge>
                                             </div>
-                                            <Badge
-                                                variant={
-                                                    complaint.severity === 'high' ? 'destructive' :
-                                                    complaint.severity === 'medium' ? 'secondary' : 'default'
-                                                }
-                                                className="capitalize"
-                                            >
-                                                {complaint.severity}
-                                            </Badge>
+                                            <p className="text-muted-foreground mt-1 text-sm">{complaint.description}</p>
+                                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                                                <MapPin className="w-4 h-4" />
+                                                <span>{complaint.location}</span>
+                                            </div>
                                         </div>
-                                        <p className="text-muted-foreground mt-1 text-sm">{complaint.description}</p>
-                                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
-                                            <MapPin className="w-4 h-4" />
-                                            <span>{complaint.location}</span>
-                                        </div>
-                                    </div>
-                                </Card>
-                            ))}
-                        </div>
-                    </>
+                                    </Card>
+                                ))}
+                            </div>
+                        ) : (
+                             <div className="text-center p-12 text-muted-foreground">
+                                <p>No complaints found for the specified route.</p>
+                            </div>
+                        )}
+                    </div>
                 )}
             </CardContent>
         </Card>
