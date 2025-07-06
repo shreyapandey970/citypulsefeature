@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PotholeIcon } from "@/components/icons/pothole-icon";
 import { Trash2, LightbulbOff, TreeDeciduous, Search, MapPin, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
@@ -160,67 +161,65 @@ export function ComplaintsView() {
                     </Button>
                 </form>
 
-                {searched && (
-                    <div className="relative">
-                        {isSearching && (
-                            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center p-12 bg-background/80 rounded-md">
-                                <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
-                                <p className="text-lg text-muted-foreground font-semibold">
-                                    Finding complaints on your route...
-                                </p>
+                <div className={cn("relative", !searched && "hidden")}>
+                    {isSearching && (
+                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center p-12 bg-background/80 rounded-md">
+                            <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
+                            <p className="text-lg text-muted-foreground font-semibold">
+                                Finding complaints on your route...
+                            </p>
+                        </div>
+                    )}
+                    
+                    <div className={cn(isSearching ? 'opacity-0' : 'opacity-100', 'transition-opacity')}>
+                        <ComplaintsMap complaints={complaints} />
+
+                        {complaints.length > 0 ? (
+                           <div className="space-y-4 mt-8">
+                                {complaints.map(complaint => (
+                                    <Card key={complaint.id} className="flex flex-col sm:flex-row items-start gap-4 p-4 hover:bg-secondary/50 transition-colors">
+                                        <Image 
+                                            src={complaint.imageUrl}
+                                            alt={complaint.issueType}
+                                            width={150}
+                                            height={100}
+                                            className="rounded-md object-cover w-full sm:w-[150px] aspect-[3/2] sm:aspect-auto"
+                                            data-ai-hint={complaint.dataAiHint}
+                                        />
+                                        <div className="flex-1">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <IssueIcon issueType={complaint.issueType} />
+                                                    <h3 className="font-semibold capitalize text-lg">
+                                                        {complaint.issueType.replace(/_/g, ' ')}
+                                                    </h3>
+                                                </div>
+                                                <Badge
+                                                    variant={
+                                                        complaint.severity === 'high' ? 'destructive' :
+                                                        complaint.severity === 'medium' ? 'secondary' : 'default'
+                                                    }
+                                                    className="capitalize"
+                                                >
+                                                    {complaint.severity}
+                                                </Badge>
+                                            </div>
+                                            <p className="text-muted-foreground mt-1 text-sm">{complaint.description}</p>
+                                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                                                <MapPin className="w-4 h-4" />
+                                                <span>{complaint.location}</span>
+                                            </div>
+                                        </div>
+                                    </Card>
+                                ))}
+                            </div>
+                        ) : (
+                             <div className="text-center p-12 text-muted-foreground">
+                                <p>No complaints found for the specified route.</p>
                             </div>
                         )}
-                        
-                        <div className={isSearching ? 'opacity-0' : 'opacity-100 transition-opacity'}>
-                            <ComplaintsMap complaints={complaints} />
-
-                            {complaints.length > 0 ? (
-                               <div className="space-y-4 mt-8">
-                                    {complaints.map(complaint => (
-                                        <Card key={complaint.id} className="flex flex-col sm:flex-row items-start gap-4 p-4 hover:bg-secondary/50 transition-colors">
-                                            <Image 
-                                                src={complaint.imageUrl}
-                                                alt={complaint.issueType}
-                                                width={150}
-                                                height={100}
-                                                className="rounded-md object-cover w-full sm:w-[150px] aspect-[3/2] sm:aspect-auto"
-                                                data-ai-hint={complaint.dataAiHint}
-                                            />
-                                            <div className="flex-1">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        <IssueIcon issueType={complaint.issueType} />
-                                                        <h3 className="font-semibold capitalize text-lg">
-                                                            {complaint.issueType.replace(/_/g, ' ')}
-                                                        </h3>
-                                                    </div>
-                                                    <Badge
-                                                        variant={
-                                                            complaint.severity === 'high' ? 'destructive' :
-                                                            complaint.severity === 'medium' ? 'secondary' : 'default'
-                                                        }
-                                                        className="capitalize"
-                                                    >
-                                                        {complaint.severity}
-                                                    </Badge>
-                                                </div>
-                                                <p className="text-muted-foreground mt-1 text-sm">{complaint.description}</p>
-                                                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
-                                                    <MapPin className="w-4 h-4" />
-                                                    <span>{complaint.location}</span>
-                                                </div>
-                                            </div>
-                                        </Card>
-                                    ))}
-                                </div>
-                            ) : (
-                                !isSearching && <div className="text-center p-12 text-muted-foreground">
-                                    <p>No complaints found for the specified route.</p>
-                                </div>
-                            )}
-                        </div>
                     </div>
-                )}
+                </div>
             </CardContent>
         </Card>
     );
