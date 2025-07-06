@@ -12,7 +12,6 @@ import { Trash2, LightbulbOff, TreeDeciduous, Search, MapPin, Loader2 } from 'lu
 import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
 import { LatLngExpression, divIcon } from 'leaflet';
-import ReactDOMServer from 'react-dom/server';
 
 const MOCK_COMPLAINTS = [
     { id: '1', issueType: 'pothole' as const, location: '40.7128, -74.0060', severity: 'high' as const, description: 'Large pothole on main street, very dangerous.', imageUrl: 'https://placehold.co/150x100.png', dataAiHint: 'pothole road' },
@@ -40,13 +39,28 @@ const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLaye
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
 const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
 
+const getIconSvg = (issueType: Complaint['issueType']) => {
+    const strokeColor = "hsl(var(--primary))";
+    const commonSvgProps = `xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
+
+    switch (issueType) {
+        case 'pothole': 
+            return `<svg ${commonSvgProps}><path d="M12 4a8 8 0 0 0-8 8c0 2.5.83 5.17 3 6.5" /><path d="M12 4a8 8 0 0 1 8 8c0 2.5-.83 5.17-3 6.5" /><path d="M7 18.5c1.33-1 2.67-1.5 4-1.5s2.67.5 4 1.5" /><path d="M10 13l-1 2.5" /><path d="M14 13l1 2.5" /><path d="M12 17V10" /></svg>`;
+        case 'garbage': 
+            return `<svg ${commonSvgProps}><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>`;
+        case 'streetlight': 
+            return `<svg ${commonSvgProps}><path d="M9 18h6"/><path d="M10 22h4"/><path d="m2 2 20 20"/><path d="M12 14a4 4 0 0 0-3.34-3.91"/><path d="M4 12a8.01 8.01 0 0 0 8.01 8.01c1.1 0 2.15-.22 3.12-.62"/><path d="M12.23 7.82A6.002 6.002 0 0 1 18 12a5.98 5.98 0 0 1-1.48 3.81"/><path d="M2 12A8.01 8.01 0 0 1 7.82 4.23"/><path d="m15 6-3.4 3.4"/></svg>`;
+        case 'fallen_tree': 
+            return `<svg ${commonSvgProps}><path d="M8 13h8"/><path d="M12 22V8"/><path d="M18.8 6.4a2.4 2.4 0 0 0-3.2 0L12 10l-3.6-3.6a2.4 2.4 0 0 0-3.2 0L4 7.6l2.8 2.8a2.4 2.4 0 0 0 3.2 0L12 8l2.4 2.4a2.4 2.4 0 0 0 3.2 0L20 7.6l-1.2-1.2z"/></svg>`;
+        default: 
+            return '';
+    }
+}
+
 const createIssueIcon = (complaint: Complaint) => {
+    const iconSvg = getIconSvg(complaint.issueType);
     return divIcon({
-        html: ReactDOMServer.renderToString(
-            <div className="p-2 bg-background rounded-full shadow-lg border border-primary">
-              <IssueIcon issueType={complaint.issueType} className="w-6 h-6 text-primary" />
-            </div>
-        ),
+        html: `<div style="padding: 0.5rem; background-color: hsl(var(--background)); border-radius: 9999px; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); border: 1px solid hsl(var(--primary)); display: flex; align-items: center; justify-content: center;">${iconSvg}</div>`,
         className: 'bg-transparent border-0',
         iconSize: [40, 40],
         iconAnchor: [20, 20],
