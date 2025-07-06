@@ -17,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +39,7 @@ import { useToast } from "@/hooks/use-toast";
 
 import { identifyObject, IdentifyObjectOutput } from "@/ai/flows/identify-object";
 import { assessSeverity, AssessSeverityOutput } from "@/ai/flows/assess-severity";
-import { createReport } from "@/lib/firebase/service";
+import { createReport, updateReport } from "@/lib/firebase/service";
 
 type Step = "input" | "identifying" | "confirmation" | "assessing" | "result";
 type IssueType = "pothole" | "garbage" | "streetlight" | "fallen_tree" | "other";
@@ -56,6 +55,7 @@ export function EnviroCheckForm() {
   const [error, setError] = useState<string | null>(null);
   const [identificationResult, setIdentificationResult] = useState<IdentifyObjectOutput | null>(null);
   const [assessmentResult, setAssessmentResult] = useState<AssessSeverityOutput | null>(null);
+  const [reportId, setReportId] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -107,6 +107,7 @@ export function EnviroCheckForm() {
     setError(null);
     setIdentificationResult(null);
     setAssessmentResult(null);
+    setReportId(null);
     setIssueType("");
     if(fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -143,6 +144,28 @@ export function EnviroCheckForm() {
 
     setStep("assessing");
     try {
+      // Create initial report and get ID
+      const newReportId = await createReport({
+        issueType: finalIssueType,
+        location,
+        imageDataUri,
+        identificationResult,
+        assessmentResult: null,
+        status: 'pending_assessment',
+      });
+
+      if (!newReportId) {
+        setError("Could not submit report. Firebase might not be configured.");
+        setStep("input");
+        toast({ variant: "destructive", title: "Submission Failed", description: "Could not save report." });
+        return;
+      }
+      
+      setReportId(newReportId);
+      setStep("result"); // Go to result page immediately
+      toast({ title: "Report Submitted!", description: "We are now assessing the severity." });
+
+      // Asynchronously assess and update
       const result = await assessSeverity({
         location,
         photoDataUri: imageDataUri,
@@ -150,21 +173,13 @@ export function EnviroCheckForm() {
         isConfirmed: true,
       });
       setAssessmentResult(result);
+      await updateReport(newReportId, result);
 
-      await createReport({
-        issueType: finalIssueType,
-        location,
-        imageDataUri,
-        identificationResult,
-        assessmentResult: result,
-      });
-
-      setStep("result");
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "An unknown error occurred.";
       setError(errorMsg);
       setStep("input");
-      toast({ variant: "destructive", title: "Assessment Failed", description: errorMsg });
+      toast({ variant: "destructive", title: "An Error Occurred", description: errorMsg });
     }
   };
 
@@ -186,7 +201,7 @@ export function EnviroCheckForm() {
           <div className="flex flex-col items-center justify-center text-center p-12">
             <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
             <p className="text-lg text-muted-foreground font-semibold">
-              {step === "identifying" ? "Verifying image..." : "Assessing severity..."}
+              {step === "identifying" ? "Verifying image..." : "Finalizing your report..."}
             </p>
             <p className="text-sm text-muted-foreground">This may take a moment.</p>
           </div>
@@ -263,21 +278,33 @@ export function EnviroCheckForm() {
               <CardDescription>Thank you for helping improve our environment.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
-               <div className="text-center">
-                <p className="text-muted-foreground">Assessed Severity</p>
-                <Badge
-                    variant={
-                      assessmentResult?.severity === 'high' ? 'destructive' :
-                      assessmentResult?.severity === 'medium' ? 'secondary' : 'default'
-                    }
-                    className="text-2xl font-bold capitalize mt-1 px-4 py-2"
-                >
-                    {assessmentResult?.severity}
-                </Badge>
-               </div>
-               <p className="text-muted-foreground text-center bg-secondary/50 p-4 rounded-lg">
-                <span className="font-semibold text-foreground">Justification: </span> {assessmentResult?.justification}
-               </p>
+               {assessmentResult ? (
+                   <>
+                       <div className="text-center">
+                        <p className="text-muted-foreground">Assessed Severity</p>
+                        <Badge
+                            variant={
+                              assessmentResult.severity === 'high' ? 'destructive' :
+                              assessmentResult.severity === 'medium' ? 'secondary' : 'default'
+                            }
+                            className="text-2xl font-bold capitalize mt-1 px-4 py-2"
+                        >
+                            {assessmentResult.severity}
+                        </Badge>
+                       </div>
+                       <p className="text-muted-foreground text-center bg-secondary/50 p-4 rounded-lg">
+                        <span className="font-semibold text-foreground">Justification: </span> {assessmentResult.justification}
+                       </p>
+                   </>
+               ) : (
+                   <div className="flex flex-col items-center justify-center text-center p-6 bg-secondary/50 rounded-lg w-full">
+                       <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
+                       <p className="text-lg text-foreground font-semibold">
+                           Assessing severity...
+                       </p>
+                       <p className="text-sm text-muted-foreground">This may take a moment. You can safely leave this page.</p>
+                   </div>
+               )}
             </CardContent>
             <CardFooter className="flex justify-center">
               <Button onClick={handleReset} size="lg">

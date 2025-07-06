@@ -1,5 +1,5 @@
 import {initializeApp, getApp, getApps} from 'firebase/app';
-import {getFirestore, collection, addDoc, getDocs, query} from 'firebase/firestore';
+import {getFirestore, collection, addDoc, getDocs, query, doc, updateDoc} from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -27,6 +27,24 @@ export const createReport = async (report: any) => {
     throw e;
   }
 };
+
+export const updateReport = async (reportId: string, assessmentResult: any) => {
+    try {
+      if (!firebaseConfig.projectId) {
+        console.warn("Firebase config not found, skipping Firestore update.");
+        return;
+      }
+      const reportRef = doc(db, 'reports', reportId);
+      await updateDoc(reportRef, {
+        assessmentResult,
+        status: 'assessed',
+      });
+      console.log('Document updated with ID: ', reportId);
+    } catch (e) {
+      console.error('Error updating document: ', e);
+      throw e;
+    }
+  };
 
 export const getReports = async () => {
     try {
