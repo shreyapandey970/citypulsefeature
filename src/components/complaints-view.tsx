@@ -1,17 +1,13 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PotholeIcon } from "@/components/icons/pothole-icon";
-import { Trash2, LightbulbOff, TreeDeciduous, Search, MapPin, Loader2, Info } from 'lucide-react';
-
-import dynamic from 'next/dynamic';
-import 'leaflet/dist/leaflet.css';
-import { LatLngExpression, divIcon } from 'leaflet';
+import { Trash2, LightbulbOff, TreeDeciduous, Search, MapPin, Loader2 } from 'lucide-react';
 
 const MOCK_COMPLAINTS = [
     { id: '1', issueType: 'pothole' as const, location: '40.7128, -74.0060', severity: 'high' as const, description: 'Large pothole on main street, very dangerous.', imageUrl: 'https://placehold.co/150x100.png', dataAiHint: 'pothole road' },
@@ -34,81 +30,6 @@ const IssueIcon = ({ issueType, className }: { issueType: Complaint['issueType']
     }
 }
 
-const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
-const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
-const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
-const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
-const useMap = dynamic(() => import('react-leaflet').then(mod => mod.useMap), { ssr: false });
-
-const getIconSvg = (issueType: Complaint['issueType']) => {
-    const strokeColor = "hsl(var(--primary))";
-    const commonSvgProps = `xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
-
-    switch (issueType) {
-        case 'pothole': 
-            return `<svg ${commonSvgProps}><path d="M12 4a8 8 0 0 0-8 8c0 2.5.83 5.17 3 6.5" /><path d="M12 4a8 8 0 0 1 8 8c0 2.5-.83 5.17-3 6.5" /><path d="M7 18.5c1.33-1 2.67-1.5 4-1.5s2.67.5 4 1.5" /><path d="M10 13l-1 2.5" /><path d="M14 13l1 2.5" /><path d="M12 17V10" /></svg>`;
-        case 'garbage': 
-            return `<svg ${commonSvgProps}><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>`;
-        case 'streetlight': 
-            return `<svg ${commonSvgProps}><path d="M9 18h6"/><path d="M10 22h4"/><path d="m2 2 20 20"/><path d="M12 14a4 4 0 0 0-3.34-3.91"/><path d="M4 12a8.01 8.01 0 0 0 8.01 8.01c1.1 0 2.15-.22 3.12-.62"/><path d="M12.23 7.82A6.002 6.002 0 0 1 18 12a5.98 5.98 0 0 1-1.48 3.81"/><path d="M2 12A8.01 8.01 0 0 1 7.82 4.23"/><path d="m15 6-3.4 3.4"/></svg>`;
-        case 'fallen_tree': 
-            return `<svg ${commonSvgProps}><path d="M8 13h8"/><path d="M12 22V8"/><path d="M18.8 6.4a2.4 2.4 0 0 0-3.2 0L12 10l-3.6-3.6a2.4 2.4 0 0 0-3.2 0L4 7.6l2.8 2.8a2.4 2.4 0 0 0 3.2 0L12 8l2.4 2.4a2.4 2.4 0 0 0 3.2 0L20 7.6l-1.2-1.2z"/></svg>`;
-        default: 
-            return '';
-    }
-}
-
-const createIssueIcon = (complaint: Complaint) => {
-    const iconSvg = getIconSvg(complaint.issueType);
-    return divIcon({
-        html: `<div style="padding: 0.5rem; background-color: hsl(var(--background)); border-radius: 9999px; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); border: 1px solid hsl(var(--primary)); display: flex; align-items: center; justify-content: center;">${iconSvg}</div>`,
-        className: 'bg-transparent border-0',
-        iconSize: [40, 40],
-        iconAnchor: [20, 20],
-    });
-};
-
-function MapContentUpdater({ complaints }: { complaints: Complaint[] }) {
-    const map = useMap();
-    useEffect(() => {
-        if (complaints.length > 0) {
-            const [lat, lng] = complaints[0].location.split(',').map(Number);
-            map.flyTo([lat, lng], 14, { animate: true, duration: 1 });
-        }
-    }, [complaints, map]);
-
-    return (
-        <>
-            {complaints.map(complaint => {
-                const position = complaint.location.split(',').map(Number) as LatLngExpression;
-                return (
-                    <Marker key={complaint.id} position={position} icon={createIssueIcon(complaint)}>
-                        <Popup>
-                            <div className="font-semibold capitalize">{complaint.issueType.replace(/_/g, ' ')}</div>
-                            <p>{complaint.description}</p>
-                        </Popup>
-                    </Marker>
-                )
-            })}
-        </>
-    );
-}
-
-const ComplaintsMap = ({ complaints }: { complaints: Complaint[] }) => {
-    const center: LatLngExpression = [40.7128, -74.0060]; // Default center
-
-    return (
-        <MapContainer center={center} zoom={13} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>
-            <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <MapContentUpdater complaints={complaints} />
-        </MapContainer>
-    );
-};
-
-
 export function ComplaintsView() {
     const [startPoint, setStartPoint] = useState('');
     const [destination, setDestination] = useState('');
@@ -120,29 +41,28 @@ export function ComplaintsView() {
         e.preventDefault();
         setIsSearching(true);
         setSearchAttempted(true);
-        
+        // Mock API call
         setTimeout(() => {
             setComplaints(MOCK_COMPLAINTS);
             setIsSearching(false);
         }, 1500);
     };
-    
-    const renderComplaintsList = () => {
-        if (!searchAttempted) {
-             return null;
-        }
-        
+
+    const renderComplaints = () => {
         if (isSearching) {
             return (
-                <div className="flex flex-col items-center justify-center text-center p-12 mt-8">
+                <div className="flex flex-col items-center justify-center text-center p-12">
                     <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
+                    <p className="text-lg text-muted-foreground font-semibold">
+                        Finding complaints on your route...
+                    </p>
                 </div>
             );
         }
 
         if (complaints.length > 0) {
             return (
-                 <div className="space-y-4 mt-8">
+                <div className="space-y-4">
                     {complaints.map(complaint => (
                         <Card key={complaint.id} className="flex flex-col sm:flex-row items-start gap-4 p-4 hover:bg-secondary/50 transition-colors">
                             <Image 
@@ -183,11 +103,15 @@ export function ComplaintsView() {
             );
         }
         
-        return (
-             <div className="text-center p-12 text-muted-foreground bg-secondary/30 rounded-md mt-8">
-                <p>No complaints found for the specified route.</p>
-            </div>
-        );
+        if (searchAttempted) {
+            return (
+                <div className="text-center p-12 text-muted-foreground bg-secondary/30 rounded-md">
+                    <p>No complaints found for the specified route.</p>
+                </div>
+            );
+        }
+
+        return null; // Don't show anything before the first search
     };
 
     return (
@@ -217,30 +141,9 @@ export function ComplaintsView() {
                         {isSearching ? 'Searching...' : 'Search'}
                     </Button>
                 </form>
-
-                <div className="relative h-[400px] w-full rounded-md overflow-hidden border">
-                    {/* The map is always rendered */}
-                    <ComplaintsMap complaints={complaints} />
-
-                    {/* Overlays are rendered on top */}
-                    {isSearching && (
-                         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center bg-background/80 backdrop-blur-sm">
-                            <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
-                            <p className="text-lg text-muted-foreground font-semibold">
-                                Finding complaints...
-                            </p>
-                        </div>
-                    )}
-                    {!searchAttempted && (
-                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center p-12 text-muted-foreground bg-secondary/30">
-                            <Info className="w-12 h-12 text-primary mx-auto mb-4" />
-                            <p className="font-semibold text-lg">Find issues on your path</p>
-                            <p>Enter a start and destination to see complaints on the map.</p>
-                        </div>
-                    )}
+                <div className="mt-6">
+                    {renderComplaints()}
                 </div>
-                
-                {renderComplaintsList()}
             </CardContent>
         </Card>
     );
