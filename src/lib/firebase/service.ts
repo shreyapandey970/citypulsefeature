@@ -26,25 +26,35 @@ if (typeof window !== 'undefined' && firebaseConfig.projectId) {
 
 export const signUpUser = async (email: string, password: string, name: string, profilePic: File | null): Promise<User> => {
     if (!auth) throw new Error("Firebase not initialized");
+    
+    // Create the user first
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    let photoURL: string | undefined = undefined;
-
-    if (profilePic) {
-        const storageRef = ref(storage, `profile-pics/${user.uid}/${profilePic.name}`);
-        await uploadBytes(storageRef, profilePic);
-        photoURL = await getDownloadURL(storageRef);
-    }
-
+    // Update the profile with the name immediately
     await updateProfile(user, {
         displayName: name,
-        photoURL: photoURL
     });
     
-    // We can just return the user from auth, but this is a good pattern if you want to store more user data in Firestore
+    // Handle profile picture upload in the background (don't await the full process here)
+    if (profilePic) {
+        const uploadAndUpdateProfile = async () => {
+            try {
+                const storageRef = ref(storage, `profile-pics/${user.uid}/${profilePic.name}`);
+                await uploadBytes(storageRef, profilePic);
+                const photoURL = await getDownloadURL(storageRef);
+                await updateProfile(user, { photoURL });
+                console.log("Profile picture updated successfully.");
+            } catch (uploadError) {
+                console.error("Error uploading profile picture:", uploadError);
+            }
+        };
+        uploadAndUpdateProfile(); // Fire and forget
+    }
+    
     return user;
 };
+
 
 export const signInUser = async (email: string, password: string): Promise<User> => {
     if (!auth) throw new Error("Firebase not initialized");
