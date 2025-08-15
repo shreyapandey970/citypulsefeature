@@ -150,8 +150,7 @@ export function EnviroCheckForm() {
         location,
         imageDataUri,
         identificationResult,
-        assessmentResult: null,
-        status: 'pending_assessment',
+        assessmentResult: null, // This will be updated later
       });
 
       if (!newReportId) {

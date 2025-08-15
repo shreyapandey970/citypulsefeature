@@ -1,16 +1,17 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PotholeIcon } from "@/components/icons/pothole-icon";
-import { Trash2, LightbulbOff, TreeDeciduous, Search, MapPin, Loader2 } from 'lucide-react';
-import { getReports } from '@/lib/firebase/service';
+import { Trash2, LightbulbOff, TreeDeciduous, Loader2, MapPin, Clock, CheckCircle, Hourglass } from 'lucide-react';
+import { listenToReports, updateReportStatus } from '@/lib/firebase/service';
+import { formatDistance, format } from 'date-fns';
 
 type IssueType = 'pothole' | 'garbage' | 'streetlight' | 'fallen_tree' | 'other';
+type Status = 'pending' | 'in progress' | 'resolved';
 
 type Complaint = {
     id: string;
@@ -20,6 +21,9 @@ type Complaint = {
     description: string;
     imageUrl: string;
     dataAiHint?: string;
+    complaintTime?: Date;
+    resolvedTime?: Date;
+    status: Status;
 };
 
 const IssueIcon = ({ issueType, className }: { issueType: Complaint['issueType'], className?: string }) => {
@@ -33,44 +37,61 @@ const IssueIcon = ({ issueType, className }: { issueType: Complaint['issueType']
     }
 }
 
-export function ComplaintsView() {
-    const [startPoint, setStartPoint] = useState('');
-    const [destination, setDestination] = useState('');
-    const [complaints, setComplaints] = useState<Complaint[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
-    const [searchAttempted, setSearchAttempted] = useState(false);
+const calculateTimeDifference = (start: Date, end: Date) => {
+    return formatDistance(end, start, { addSuffix: false });
+};
 
-    const handleSearch = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSearching(true);
-        setSearchAttempted(true);
-        try {
-            const reportsFromDb = await getReports();
+const StatusActions = ({ id, currentStatus }: { id: string, currentStatus: Status }) => {
+    if (currentStatus === 'resolved') {
+        return null;
+    }
+
+    const nextStatus = currentStatus === 'pending' ? 'in progress' : 'resolved';
+    const buttonText = currentStatus === 'pending' ? 'Start Progress' : 'Mark as Resolved';
+
+    return (
+        <Button size="sm" onClick={() => updateReportStatus(id, nextStatus)}>
+            {buttonText}
+        </Button>
+    )
+}
+
+export function ComplaintsView() {
+    const [complaints, setComplaints] = useState<Complaint[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const unsubscribe = listenToReports((reportsFromDb) => {
             const formattedComplaints: Complaint[] = reportsFromDb.map((report: any) => ({
                 id: report.id,
                 issueType: report.issueType,
                 location: report.location,
-                severity: report.assessmentResult.severity,
-                description: report.assessmentResult.justification,
+                severity: report.assessmentResult?.severity || 'low',
+                description: report.assessmentResult?.justification || 'Awaiting assessment...',
                 imageUrl: report.imageDataUri,
                 dataAiHint: report.issueType,
+                complaintTime: report.complaintTime,
+                resolvedTime: report.resolvedTime,
+                status: report.status,
             }));
+            // Sort by complaint time, newest first
+            formattedComplaints.sort((a, b) => (b.complaintTime?.getTime() || 0) - (a.complaintTime?.getTime() || 0));
             setComplaints(formattedComplaints);
-        } catch (error) {
-            console.error("Failed to fetch complaints:", error);
-            setComplaints([]);
-        } finally {
-            setIsSearching(false);
-        }
-    };
+            setIsLoading(false);
+        });
+
+        // Cleanup subscription on component unmount
+        return () => unsubscribe();
+    }, []);
+
 
     const renderComplaints = () => {
-        if (isSearching) {
+        if (isLoading) {
             return (
                 <div className="flex flex-col items-center justify-center text-center p-12">
                     <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
                     <p className="text-lg text-muted-foreground font-semibold">
-                        Finding complaints...
+                        Loading complaints...
                     </p>
                 </div>
             );
@@ -108,9 +129,29 @@ export function ComplaintsView() {
                                     </Badge>
                                 </div>
                                 <p className="text-muted-foreground mt-1 text-sm">{complaint.description}</p>
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
-                                    <MapPin className="w-4 h-4" />
-                                    <span>{complaint.location}</span>
+                                
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm text-muted-foreground mt-3">
+                                    <div className="flex items-center gap-2">
+                                        <MapPin className="w-4 h-4" />
+                                        <span>{complaint.location}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2" title={complaint.complaintTime ? format(complaint.complaintTime, 'PPP p') : 'Unknown'}>
+                                        <Clock className="w-4 h-4" />
+                                        <span>Reported: {complaint.complaintTime ? formatDistance(complaint.complaintTime, new Date(), { addSuffix: true }) : 'N/A'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {complaint.status === 'resolved' ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Hourglass className="w-4 h-4 text-orange-500" />}
+                                        <span className="capitalize">{complaint.status}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Clock className="w-4 h-4" />
+                                        <span>
+                                            Resolution Time: {complaint.resolvedTime && complaint.complaintTime ? calculateTimeDifference(complaint.complaintTime, complaint.resolvedTime) : 'Not yet resolved'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="mt-4 flex justify-end">
+                                    <StatusActions id={complaint.id} currentStatus={complaint.status} />
                                 </div>
                             </div>
                         </Card>
@@ -119,42 +160,22 @@ export function ComplaintsView() {
             );
         }
         
-        if (searchAttempted) {
-            return (
-                <div className="text-center p-12 text-muted-foreground bg-secondary/30 rounded-md">
-                    <p>No complaints found. Be the first to submit one!</p>
-                </div>
-            );
-        }
-
-        return null; // Don't show anything before the first search
+        return (
+            <div className="text-center p-12 text-muted-foreground bg-secondary/30 rounded-md">
+                <p>No complaints found. Be the first to submit one!</p>
+            </div>
+        );
     };
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="font-headline text-2xl">View All Complaints</CardTitle>
+                <CardTitle className="font-headline text-2xl">Live Complaint Feed</CardTitle>
                 <CardDescription>
-                    Click search to see all reported issues.
+                    All reported issues are shown here in real-time.
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4 mb-6">
-                    <Input 
-                        placeholder="Start point, e.g., 'City Hall, New York'" 
-                        value={startPoint} 
-                        onChange={(e) => setStartPoint(e.target.value)}
-                    />
-                    <Input 
-                        placeholder="Destination, e.g., 'Central Park, New York'" 
-                        value={destination} 
-                        onChange={(e) => setDestination(e.target.value)}
-                    />
-                    <Button type="submit" disabled={isSearching} className="sm:w-auto w-full">
-                        {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-                        {isSearching ? 'Searching...' : 'Search'}
-                    </Button>
-                </form>
                 <div className="mt-6">
                     {renderComplaints()}
                 </div>
