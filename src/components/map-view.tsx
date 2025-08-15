@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline, Circle } from 'react-leaflet';
 import L, { LatLngExpression } from 'leaflet';
 import Image from 'next/image';
 
@@ -109,6 +109,17 @@ export function MapView({ complaints, route }: { complaints: Complaint[], route:
         );
     }
 
+    let routeCircle: { center: LatLngExpression, radius: number } | null = null;
+    if (route.length > 1) {
+        const routeBounds = L.latLngBounds(route);
+        const center = routeBounds.getCenter();
+        const radius = center.distanceTo(routeBounds.getNorthEast());
+        routeCircle = { center, radius };
+    } else if (route.length === 1) {
+        routeCircle = { center: route[0], radius: 5000 }; // Default 5km radius for a single point
+    }
+
+
     // Reset Leaflet container on mount to prevent duplicate initialization
     useEffect(() => {
       const container = L.DomUtil.get("map");
@@ -124,8 +135,12 @@ export function MapView({ complaints, route }: { complaints: Complaint[], route:
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <MapUpdater complaints={complaints} route={route} />
-            {route.length > 1 && (
-                <Polyline positions={route} color="blue" weight={5} opacity={0.7} />
+            {routeCircle && (
+                <Circle 
+                    center={routeCircle.center}
+                    radius={routeCircle.radius}
+                    pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
+                />
             )}
             {complaints.map(complaint => {
                 const parts = complaint.location.split(',').map(p => p.trim());
