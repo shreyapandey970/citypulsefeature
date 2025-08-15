@@ -1,5 +1,6 @@
 import {initializeApp, getApp, getApps, FirebaseApp} from 'firebase/app';
-import {getFirestore, collection, addDoc, getDocs, query, doc, updateDoc, Firestore, serverTimestamp, onSnapshot, Unsubscribe} from 'firebase/firestore';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, User } from "firebase/auth";
+import {getFirestore, collection, addDoc, getDocs, query, doc, updateDoc, Firestore, serverTimestamp, onSnapshot, Unsubscribe, where} from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -12,21 +13,50 @@ const firebaseConfig = {
 
 let app: FirebaseApp;
 let db: Firestore;
+let auth;
 
 if (typeof window !== 'undefined' && firebaseConfig.projectId) {
     app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     db = getFirestore(app);
+    auth = getAuth(app);
+}
+
+export const signUpUser = async (email: string, password: string): Promise<User> => {
+    if (!auth) throw new Error("Firebase not initialized");
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    return userCredential.user;
+};
+
+export const signInUser = async (email: string, password: string): Promise<User> => {
+    if (!auth) throw new Error("Firebase not initialized");
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    return userCredential.user;
+};
+
+export const signOutUser = async (): Promise<void> => {
+    if (!auth) throw new Error("Firebase not initialized");
+    await signOut(auth);
+};
+
+export const getCurrentUser = (): User | null => {
+  if (!auth) return null;
+  return auth.currentUser;
 }
 
 
 export const createReport = async (report: any) => {
   try {
+    const user = getCurrentUser();
+    if (!user) {
+        throw new Error("User not logged in");
+    }
     if (!db) {
         console.warn("Firebase config not found, skipping Firestore write.");
         return null;
     }
     const reportData = {
         ...report,
+        userId: user.uid,
         complaintTime: serverTimestamp(),
         resolvedTime: null,
         status: 'pending',
@@ -77,29 +107,16 @@ export const updateReportStatus = async (reportId: string, status: 'pending' | '
     }
 };
 
-export const getReports = async () => {
-    try {
-        if (!db) {
-            console.warn("Firebase config not found, returning empty array.");
-            return [];
-        }
-        const reportsCollection = collection(db, 'reports');
-        const reportSnapshot = await getDocs(query(reportsCollection));
-        const reportList = reportSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        return reportList;
-    } catch (e) {
-        console.error("Error getting documents: ", e);
-        throw e;
-    }
-}
-
-export const listenToReports = (callback: (reports: any[]) => void): Unsubscribe => {
-    if (!db) {
-        console.warn("Firebase config not found, not listening to reports.");
+export const listenToUserReports = (callback: (reports: any[]) => void): Unsubscribe => {
+    const user = getCurrentUser();
+    if (!db || !user) {
+        console.warn("Firebase config not found or user not logged in, not listening to reports.");
+        // Immediately call back with empty array to clear any existing complaints
+        callback([]);
         return () => {}; // Return a no-op unsubscribe function
     }
     const reportsCollection = collection(db, 'reports');
-    const q = query(reportsCollection);
+    const q = query(reportsCollection, where("userId", "==", user.uid));
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const reports = querySnapshot.docs.map(doc => {

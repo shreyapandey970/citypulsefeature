@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PotholeIcon } from "@/components/icons/pothole-icon";
 import { Trash2, LightbulbOff, TreeDeciduous, Loader2, MapPin, Clock, CheckCircle, Hourglass } from 'lucide-react';
-import { listenToReports, updateReportStatus } from '@/lib/firebase/service';
+import { listenToUserReports, updateReportStatus } from '@/lib/firebase/service';
 import { formatDistance, format } from 'date-fns';
 
 type IssueType = 'pothole' | 'garbage' | 'streetlight' | 'fallen_tree' | 'other';
@@ -61,7 +61,7 @@ export function ComplaintsView() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = listenToReports((reportsFromDb) => {
+        const unsubscribe = listenToUserReports((reportsFromDb) => {
             const formattedComplaints: Complaint[] = reportsFromDb.map((report: any) => ({
                 id: report.id,
                 issueType: report.issueType,
@@ -91,7 +91,7 @@ export function ComplaintsView() {
                 <div className="flex flex-col items-center justify-center text-center p-12">
                     <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
                     <p className="text-lg text-muted-foreground font-semibold">
-                        Loading complaints...
+                        Loading your complaints...
                     </p>
                 </div>
             );
@@ -170,9 +170,9 @@ export function ComplaintsView() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="font-headline text-2xl">Live Complaint Feed</CardTitle>
+                <CardTitle className="font-headline text-2xl">Your Complaint Feed</CardTitle>
                 <CardDescription>
-                    All reported issues are shown here in real-time.
+                    Your reported issues are shown here in real-time.
                 </CardDescription>
             </CardHeader>
             <CardContent>
