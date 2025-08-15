@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -182,10 +183,10 @@ export function ComplaintsView() {
         return () => unsubscribe();
     }, []);
 
-    const isOver24Hours = (complaintTime?: Date) => {
+    const isReadyForEscalation = (complaintTime?: Date) => {
         if (!complaintTime) return false;
-        const hours = (new Date().getTime() - complaintTime.getTime()) / (1000 * 60 * 60);
-        return hours > 24;
+        const seconds = (new Date().getTime() - complaintTime.getTime()) / 1000;
+        return seconds > 3;
     }
 
 
@@ -256,7 +257,7 @@ export function ComplaintsView() {
                                     </div>
                                 </div>
                                 <div className="mt-4 flex justify-end gap-2">
-                                    {complaint.status === 'pending' && isOver24Hours(complaint.complaintTime) && !complaint.isEscalated && (
+                                    {complaint.status === 'pending' && isReadyForEscalation(complaint.complaintTime) && !complaint.isEscalated && (
                                         <EscalateButton reportId={complaint.id} />
                                      )}
                                      <WithdrawButton reportId={complaint.id} />
