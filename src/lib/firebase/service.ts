@@ -31,27 +31,34 @@ export const signUpUser = async (email: string, password: string, name: string, 
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // Update the profile with the name immediately
-    await updateProfile(user, {
-        displayName: name,
-    });
-    
-    // Handle profile picture upload in the background (don't await the full process here)
-    if (profilePic) {
-        const uploadAndUpdateProfile = async () => {
-            try {
-                const storageRef = ref(storage, `profile-pics/${user.uid}/${profilePic.name}`);
-                await uploadBytes(storageRef, profilePic);
-                const photoURL = await getDownloadURL(storageRef);
-                await updateProfile(user, { photoURL });
-                console.log("Profile picture updated successfully.");
-            } catch (uploadError) {
-                console.error("Error uploading profile picture:", uploadError);
+    // This block will run in the background. If it fails (e.g., due to storage rules or plan limits),
+    // it will log the error but not block the user creation process.
+    const updateUserProfile = async () => {
+        try {
+            let photoURL: string | undefined = undefined;
+            if (profilePic && storage) {
+                try {
+                    const storageRef = ref(storage, `profile-pics/${user.uid}/${profilePic.name}`);
+                    await uploadBytes(storageRef, profilePic);
+                    photoURL = await getDownloadURL(storageRef);
+                } catch (storageError) {
+                    console.error("Could not upload profile picture. This might be due to Firebase Storage rules or plan limitations.", storageError);
+                    // Silently fail on storage error, user is already created.
+                }
             }
-        };
-        uploadAndUpdateProfile(); // Fire and forget
-    }
+
+            await updateProfile(user, {
+                displayName: name,
+                ...(photoURL && { photoURL }),
+            });
+
+        } catch (profileError) {
+            console.error("Error updating user profile:", profileError);
+        }
+    };
     
+    updateUserProfile(); // Fire and forget the profile update.
+
     return user;
 };
 
