@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, ChangeEvent, FormEvent } from "react";
@@ -43,14 +44,16 @@ import { createReport, updateReport } from "@/lib/firebase/service";
 
 type Step = "input" | "identifying" | "confirmation" | "assessing" | "result";
 type IssueType = "pothole" | "garbage" | "streetlight" | "fallen_tree" | "other";
+type FileType = "image" | "video";
 
 export function EnviroCheckForm() {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("input");
   const [issueType, setIssueType] = useState<IssueType | "">("");
   const [location, setLocation] = useState("");
-  const [imageDataUri, setImageDataUri] = useState<string | null>(null);
+  const [fileDataUri, setFileDataUri] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [fileType, setFileType] = useState<FileType | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [identificationResult, setIdentificationResult] = useState<IdentifyObjectOutput | null>(null);
@@ -86,23 +89,32 @@ export function EnviroCheckForm() {
     });
   };
 
-  const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
 
-      setPreviewUrl(URL.createObjectURL(file));
+      const newPreviewUrl = URL.createObjectURL(file);
+      setPreviewUrl(newPreviewUrl);
+      
+      if(file.type.startsWith('video/')) {
+          setFileType('video');
+      } else {
+          setFileType('image');
+      }
+
       const dataUri = await fileToDataUri(file);
-      setImageDataUri(dataUri);
+      setFileDataUri(dataUri);
     }
   };
 
   const handleReset = () => {
     setStep("input");
     setLocation("");
-    setImageDataUri(null);
+    setFileDataUri(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
+    setFileType(null);
     setIsGettingLocation(false);
     setError(null);
     setIdentificationResult(null);
@@ -114,17 +126,17 @@ export function EnviroCheckForm() {
   
   const handleSubmitReport = async (e: FormEvent) => {
     e.preventDefault();
-    if (!issueType || !location || !imageDataUri) {
-      setError("Please select an issue type, location, and an image.");
+    if (!issueType || !location || !fileDataUri) {
+      setError("Please select an issue type, location, and an image/video.");
       return;
     }
     setError(null);
     setStep("identifying");
 
     try {
-      const result = await identifyObject({ location, photoDataUri: imageDataUri, issueType });
+      const result = await identifyObject({ location, photoDataUri: fileDataUri, issueType });
       if (result.identifiedType === 'none') {
-        setError("No issue was identified in the image. Please try another image.");
+        setError("No issue was identified in the media. Please try another file.");
         setStep("input");
         toast({ variant: "destructive", title: "Not Found", description: "We couldn't identify a specific issue." });
         return;
@@ -140,7 +152,7 @@ export function EnviroCheckForm() {
   };
 
   const handleProceedToAssessment = async (finalIssueType: IssueType) => {
-    if (!identificationResult || !imageDataUri || !location) return;
+    if (!identificationResult || !fileDataUri || !location) return;
 
     setStep("assessing");
     try {
@@ -148,7 +160,7 @@ export function EnviroCheckForm() {
       const newReportId = await createReport({
         issueType: finalIssueType,
         location,
-        imageDataUri,
+        imageDataUri: fileDataUri,
         identificationResult,
         assessmentResult: null, // This will be updated later
       });
@@ -167,7 +179,7 @@ export function EnviroCheckForm() {
       // Asynchronously assess and update
       const result = await assessSeverity({
         location,
-        photoDataUri: imageDataUri,
+        photoDataUri: fileDataUri,
         issueType: finalIssueType,
         isConfirmed: true,
       });
@@ -200,7 +212,7 @@ export function EnviroCheckForm() {
           <div className="flex flex-col items-center justify-center text-center p-12">
             <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
             <p className="text-lg text-muted-foreground font-semibold">
-              {step === "identifying" ? "Verifying image..." : "Finalizing your report..."}
+              {step === "identifying" ? "Verifying media..." : "Finalizing your report..."}
             </p>
             <p className="text-sm text-muted-foreground">This may take a moment.</p>
           </div>
@@ -218,7 +230,8 @@ export function EnviroCheckForm() {
                 <CardDescription>Our AI agrees with your report. Please confirm to proceed.</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col items-center gap-4">
-                {previewUrl && <Image src={previewUrl} alt="Report preview" width={400} height={300} className="rounded-lg object-cover" />}
+                {previewUrl && fileType === 'image' && <Image src={previewUrl} alt="Report preview" width={400} height={300} className="rounded-lg object-cover" />}
+                {previewUrl && fileType === 'video' && <video src={previewUrl} controls width={400} className="rounded-lg" />}
                 <div className="flex items-center gap-4 text-lg p-4 bg-secondary rounded-lg w-full justify-center">
                   <CheckCircle2 className="w-8 h-8 text-green-500" />
                   <span>
@@ -244,7 +257,8 @@ export function EnviroCheckForm() {
                 <CardDescription>Our AI has identified something different. How would you like to proceed?</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col items-center gap-4">
-                {previewUrl && <Image src={previewUrl} alt="Report preview" width={400} height={300} className="rounded-lg object-cover" />}
+                {previewUrl && fileType === 'image' && <Image src={previewUrl} alt="Report preview" width={400} height={300} className="rounded-lg object-cover" />}
+                {previewUrl && fileType === 'video' && <video src={previewUrl} controls width={400} className="rounded-lg" />}
                  <div className="w-full text-center p-4 bg-secondary rounded-lg space-y-2">
                     <p>You reported: <Badge variant="outline" className="text-base capitalize">{userChoice}</Badge></p>
                     <p>AI identified: <Badge className="text-base capitalize">{aiChoice}</Badge> (with {confidence}% confidence)</p>
@@ -319,7 +333,7 @@ export function EnviroCheckForm() {
             <CardHeader>
               <CardTitle className="font-headline text-2xl">Report an Issue</CardTitle>
               <CardDescription>
-                Select an issue type, use your location, and upload an image to file a report.
+                Select an issue type, use your location, and upload an image or video to file a report.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -354,7 +368,7 @@ export function EnviroCheckForm() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Image</Label>
+                <Label>Image or Video</Label>
                 <div
                   className="relative border-2 border-dashed border-muted-foreground/50 rounded-lg p-6 text-center cursor-pointer hover:border-primary hover:bg-secondary transition-colors aspect-video flex items-center justify-center"
                   onClick={() => fileInputRef.current?.click()}
@@ -362,24 +376,35 @@ export function EnviroCheckForm() {
                   <input
                     type="file"
                     ref={fileInputRef}
-                    onChange={handleImageChange}
+                    onChange={handleFileChange}
                     className="hidden"
-                    accept="image/*"
+                    accept="image/*,video/mp4"
                     required
                   />
                   {previewUrl ? (
-                    <Image
-                      src={previewUrl}
-                      alt="Preview"
-                      fill
-                      className="object-contain rounded-md"
-                      data-ai-hint="pothole street"
-                    />
+                    <>
+                      {fileType === 'image' && (
+                        <Image
+                          src={previewUrl}
+                          alt="Preview"
+                          fill
+                          className="object-contain rounded-md"
+                          data-ai-hint="pothole street"
+                        />
+                      )}
+                      {fileType === 'video' && (
+                          <video
+                            src={previewUrl}
+                            controls
+                            className="object-contain rounded-md h-full w-full"
+                          />
+                      )}
+                    </>
                   ) : (
                     <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                       <Upload className="h-8 w-8" />
                       <p>Click or drag file to this area to upload</p>
-                      <p className="text-xs">PNG, JPG, GIF up to 10MB</p>
+                      <p className="text-xs">PNG, JPG, GIF, MP4 up to 10MB</p>
                     </div>
                   )}
                 </div>
@@ -392,7 +417,7 @@ export function EnviroCheckForm() {
               )}
             </CardContent>
             <CardFooter>
-              <Button type="submit" size="lg" className="w-full" disabled={!location || !imageDataUri || !issueType}>
+              <Button type="submit" size="lg" className="w-full" disabled={!location || !fileDataUri || !issueType}>
                 Verify & Submit Report
               </Button>
             </CardFooter>
@@ -403,3 +428,5 @@ export function EnviroCheckForm() {
 
   return <Card className="w-full transition-all duration-300 ease-in-out">{renderStep()}</Card>;
 }
+
+    
