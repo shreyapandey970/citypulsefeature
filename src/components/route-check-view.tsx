@@ -5,9 +5,12 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PotholeIcon } from "@/components/icons/pothole-icon";
-import { Trash2, LightbulbOff, TreeDeciduous, Loader2, MapPin, Clock, CheckCircle, Hourglass } from 'lucide-react';
+import { Trash2, LightbulbOff, TreeDeciduous, Loader2, MapPin, Clock, CheckCircle, Hourglass, Search } from 'lucide-react';
 import { listenToAllReports } from '@/lib/firebase/service';
 import { formatDistance, format } from 'date-fns';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 
 type IssueType = 'pothole' | 'garbage' | 'streetlight' | 'fallen_tree' | 'other';
 type Status = 'pending' | 'in progress' | 'resolved';
@@ -38,6 +41,8 @@ const IssueIcon = ({ issueType, className }: { issueType: Complaint['issueType']
 export function RouteCheckView() {
     const [complaints, setComplaints] = useState<Complaint[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [startLocation, setStartLocation] = useState('');
+    const [destination, setDestination] = useState('');
 
     useEffect(() => {
         // Listen to all reports from all users
@@ -62,6 +67,14 @@ export function RouteCheckView() {
         // Cleanup subscription on component unmount
         return () => unsubscribe();
     }, []);
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        // NOTE: In a real implementation, this would trigger a search against a mapping/routing API
+        // and then filter the complaints based on the route.
+        // For now, it doesn't do anything as we don't have that integration.
+        console.log(`Searching route from ${startLocation} to ${destination}`);
+    };
 
     const renderAllComplaints = () => {
         if (isLoading) {
@@ -145,7 +158,33 @@ export function RouteCheckView() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                {/* Future implementation: Add inputs for start and destination */}
+                <form onSubmit={handleSearch} className="mb-6 p-4 border rounded-lg bg-secondary/50">
+                    <div className="grid sm:grid-cols-2 gap-4 items-end">
+                        <div className="space-y-2">
+                            <Label htmlFor="start-location">Start Location</Label>
+                            <Input 
+                                id="start-location"
+                                placeholder="Enter starting point..." 
+                                value={startLocation}
+                                onChange={(e) => setStartLocation(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="destination">Destination</Label>
+                            <Input 
+                                id="destination"
+                                placeholder="Enter destination..." 
+                                value={destination}
+                                onChange={(e) => setDestination(e.target.value)}
+                            />
+                        </div>
+                        <Button type="submit" className="w-full sm:w-auto sm:col-span-2 justify-self-end">
+                            <Search className="mr-2 h-4 w-4" />
+                            Find Issues on Route
+                        </Button>
+                    </div>
+                </form>
+
                 <div className="mt-6">
                     {renderAllComplaints()}
                 </div>
