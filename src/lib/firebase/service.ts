@@ -31,31 +31,27 @@ export const signUpUser = async (email: string, password: string, name: string, 
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    const updateUserProfile = async () => {
-        try {
-            let photoURL: string | undefined = undefined;
-            if (profilePic && storage) {
-                try {
-                    const storageRef = ref(storage, `profile-pics/${user.uid}/${profilePic.name}`);
-                    await uploadBytes(storageRef, profilePic);
-                    photoURL = await getDownloadURL(storageRef);
-                } catch (storageError) {
-                    console.error("Could not upload profile picture. This might be due to Firebase Storage rules or plan limitations. Skipping.", storageError);
-                }
+    try {
+        let photoURL: string | undefined = undefined;
+        if (profilePic && storage) {
+            try {
+                const storageRef = ref(storage, `profile-pics/${user.uid}/${profilePic.name}`);
+                await uploadBytes(storageRef, profilePic);
+                photoURL = await getDownloadURL(storageRef);
+            } catch (storageError) {
+                console.error("Could not upload profile picture. This might be due to Firebase Storage rules or plan limitations. Skipping.", storageError);
             }
-
-            await updateProfile(user, {
-                displayName: name,
-                ...(photoURL && { photoURL }),
-            });
-
-        } catch (profileError) {
-            console.error("Error updating user profile:", profileError);
         }
-    };
-    
-    updateUserProfile(); 
 
+        await updateProfile(user, {
+            displayName: name,
+            ...(photoURL && { photoURL }),
+        });
+
+    } catch (profileError) {
+        console.error("Error updating user profile:", profileError);
+    }
+    
     return user;
 };
 
