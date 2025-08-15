@@ -62,8 +62,23 @@ export const signUpUser = async (email: string, password: string, name: string, 
 
 export const signInUser = async (email: string, password: string): Promise<User> => {
     if (!auth) throw new Error("Firebase not initialized");
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    return userCredential.user;
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        return userCredential.user;
+    } catch (error: any) {
+        // If admin user doesn't exist, create it
+        if (email === 'admin@gmail.com' && error.code === 'auth/user-not-found') {
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, 'admin@123');
+                await updateProfile(userCredential.user, { displayName: "Admin" });
+                return userCredential.user;
+            } catch (createError) {
+                throw new Error('Failed to create admin user.');
+            }
+        }
+        // Re-throw other errors
+        throw error;
+    }
 };
 
 export const signOutUser = async (): Promise<void> => {
