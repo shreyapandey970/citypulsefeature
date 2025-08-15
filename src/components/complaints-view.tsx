@@ -17,8 +17,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge";
 import { PotholeIcon } from "@/components/icons/pothole-icon";
-import { Trash2, LightbulbOff, TreeDeciduous, Loader2, MapPin, Clock, CheckCircle, Hourglass, Trash } from 'lucide-react';
-import { listenToUserReports, deleteReport } from '@/lib/firebase/service';
+import { Trash2, LightbulbOff, TreeDeciduous, Loader2, MapPin, Clock, CheckCircle, Hourglass, Trash, AlertTriangle } from 'lucide-react';
+import { listenToUserReports, deleteReport, updateReportEscalation } from '@/lib/firebase/service';
 import { formatDistance, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -36,6 +36,7 @@ type Complaint = {
     complaintTime?: Date;
     resolvedTime?: Date;
     status: Status;
+    isEscalated?: boolean;
 };
 
 const IssueIcon = ({ issueType, className }: { issueType: Complaint['issueType'], className?: string }) => {
@@ -52,6 +53,56 @@ const IssueIcon = ({ issueType, className }: { issueType: Complaint['issueType']
 const calculateTimeDifference = (start: Date, end: Date) => {
     return formatDistance(end, start, { addSuffix: false });
 };
+
+const EscalateButton = ({ reportId }: { reportId: string }) => {
+    const { toast } = useToast();
+    const [isEscalating, setIsEscalating] = useState(false);
+
+    const handleEscalate = async () => {
+        setIsEscalating(true);
+        try {
+            await updateReportEscalation(reportId);
+            toast({
+                title: 'Complaint Escalated',
+                description: 'Your report has been flagged for immediate attention.',
+            });
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Failed to escalate the complaint.',
+            });
+            console.error(error);
+        } finally {
+            setIsEscalating(false);
+        }
+    };
+
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant="secondary" size="sm" disabled={isEscalating}>
+                    {isEscalating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <AlertTriangle className="mr-2 h-4 w-4" />}
+                    Escalate
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Escalate this Complaint?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will flag the report for urgent review by the administration.
+                        Only use this if no action has been taken.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleEscalate}>Yes, Escalate</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    )
+
+}
 
 
 const WithdrawButton = ({ reportId }: { reportId: string }) => {
@@ -82,7 +133,7 @@ const WithdrawButton = ({ reportId }: { reportId: string }) => {
             <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="sm" disabled={isDeleting}>
                     {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash className="mr-2 h-4 w-4" />}
-                    Withdraw Complaint
+                    Withdraw
                 </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -119,6 +170,7 @@ export function ComplaintsView() {
                 complaintTime: report.complaintTime,
                 resolvedTime: report.resolvedTime,
                 status: report.status,
+                isEscalated: report.isEscalated || false,
             }));
             // Sort by complaint time, newest first
             formattedComplaints.sort((a, b) => (b.complaintTime?.getTime() || 0) - (a.complaintTime?.getTime() || 0));
@@ -129,6 +181,12 @@ export function ComplaintsView() {
         // Cleanup subscription on component unmount
         return () => unsubscribe();
     }, []);
+
+    const isOver24Hours = (complaintTime?: Date) => {
+        if (!complaintTime) return false;
+        const hours = (new Date().getTime() - complaintTime.getTime()) / (1000 * 60 * 60);
+        return hours > 24;
+    }
 
 
     const renderComplaints = () => {
@@ -163,6 +221,7 @@ export function ComplaintsView() {
                                         <h3 className="font-semibold capitalize text-lg">
                                             {complaint.issueType.replace(/_/g, ' ')}
                                         </h3>
+                                        {complaint.isEscalated && <Badge variant="destructive">Escalated</Badge>}
                                     </div>
                                     <Badge
                                         variant={
@@ -196,7 +255,10 @@ export function ComplaintsView() {
                                         </span>
                                     </div>
                                 </div>
-                                <div className="mt-4 flex justify-end">
+                                <div className="mt-4 flex justify-end gap-2">
+                                    {complaint.status === 'pending' && isOver24Hours(complaint.complaintTime) && !complaint.isEscalated && (
+                                        <EscalateButton reportId={complaint.id} />
+                                     )}
                                      <WithdrawButton reportId={complaint.id} />
                                 </div>
                             </div>
@@ -218,7 +280,7 @@ export function ComplaintsView() {
             <CardHeader>
                 <CardTitle className="font-headline text-2xl">Your Complaint Feed</CardTitle>
                 <CardDescription>
-                    Your reported issues are shown here in real-time. You can withdraw a complaint if it's no longer relevant.
+                    Your reported issues are shown here in real-time. You can withdraw a complaint if it's no longer relevant or escalate if it's not addressed.
                 </CardDescription>
             </CardHeader>
             <CardContent>

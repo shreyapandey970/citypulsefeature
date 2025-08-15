@@ -104,6 +104,7 @@ export const createReport = async (report: any) => {
         complaintTime: serverTimestamp(),
         resolvedTime: null,
         status: 'pending',
+        isEscalated: false,
     };
     const docRef = await addDoc(collection(db, 'reports'), reportData);
     console.log('Document written with ID: ', docRef.id);
@@ -149,6 +150,21 @@ export const updateReportStatus = async (reportId: string, status: 'pending' | '
         console.log('Report status updated for ID: ', reportId);
     } catch (e) {
         console.error('Error updating report status: ', e);
+        throw e;
+    }
+};
+
+export const updateReportEscalation = async (reportId: string) => {
+    try {
+        if (!db) {
+            console.warn("Firebase config not found, skipping Firestore update.");
+            return;
+        }
+        const reportRef = doc(db, 'reports', reportId);
+        await updateDoc(reportRef, { isEscalated: true });
+        console.log('Report escalated for ID: ', reportId);
+    } catch (e) {
+        console.error('Error escalating report: ', e);
         throw e;
     }
 };

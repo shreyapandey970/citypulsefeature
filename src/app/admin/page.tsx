@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Building2, LogOut, CheckCircle, Hourglass, Settings } from 'lucide-react';
+import { Loader2, Building2, LogOut, CheckCircle, Hourglass, Settings, AlertTriangle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
@@ -27,6 +27,7 @@ type Complaint = {
     imageUrl: string;
     status: Status;
     complaintTime?: Date;
+    isEscalated?: boolean;
 };
 
 const StatusCell = ({ reportId, currentStatus }: { reportId: string, currentStatus: Status }) => {
@@ -118,8 +119,14 @@ export default function AdminPage() {
                 imageUrl: report.imageDataUri,
                 status: report.status,
                 complaintTime: report.complaintTime,
+                isEscalated: report.isEscalated || false,
             }));
-            formattedReports.sort((a, b) => (b.complaintTime?.getTime() || 0) - (a.complaintTime?.getTime() || 0));
+            // Sort escalated reports to the top, then by time
+            formattedReports.sort((a, b) => {
+                if (a.isEscalated && !b.isEscalated) return -1;
+                if (!a.isEscalated && b.isEscalated) return 1;
+                return (b.complaintTime?.getTime() || 0) - (a.complaintTime?.getTime() || 0);
+            });
             setReports(formattedReports);
         });
 
@@ -192,8 +199,16 @@ export default function AdminPage() {
                         </TableHeader>
                         <TableBody>
                             {reports.map((report) => (
-                                <TableRow key={report.id}>
-                                    <TableCell className="font-medium capitalize">{report.issueType.replace(/_/g, ' ')}</TableCell>
+                                <TableRow key={report.id} className={report.isEscalated ? "bg-destructive/10 hover:bg-destructive/20" : ""}>
+                                    <TableCell className="font-medium">
+                                        <div className="flex items-center gap-2">
+                                            {report.isEscalated && <AlertTriangle className="w-4 h-4 text-destructive" title="This report has been escalated by the user."/>}
+                                            <span className="capitalize">{report.issueType.replace(/_/g, ' ')}</span>
+                                        </div>
+                                         {report.isEscalated && (
+                                            <Badge variant="destructive" className="mt-1">Escalated</Badge>
+                                        )}
+                                    </TableCell>
                                     <TableCell>{report.location}</TableCell>
                                     <TableCell>
                                         {report.complaintTime ? formatDistanceToNow(report.complaintTime, { addSuffix: true }) : 'N/A'}
