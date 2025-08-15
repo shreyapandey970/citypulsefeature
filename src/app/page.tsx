@@ -8,10 +8,11 @@ import Link from 'next/link';
 import { EnviroCheckForm } from '@/components/enviro-check-form';
 import { ComplaintsView } from '@/components/complaints-view';
 import { RouteCheckView } from '@/components/route-check-view';
+import { DashboardView } from '@/components/dashboard-view';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Building2, ListChecks, LogOut, Loader2, Route, ShieldCheck } from 'lucide-react';
+import { Building2, ListChecks, LogOut, Loader2, Route, ShieldCheck, LayoutDashboard } from 'lucide-react';
 import { signOutUser } from '@/lib/firebase/service';
 
 export default function Home() {
@@ -99,7 +100,7 @@ export default function Home() {
       </header>
       
       <Tabs defaultValue="report" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="report">
             <Building2 className="mr-2 h-4 w-4" />
             Report Issue
@@ -112,6 +113,10 @@ export default function Home() {
             <Route className="mr-2 h-4 w-4" />
             Check Route
           </TabsTrigger>
+          <TabsTrigger value="dashboard">
+            <LayoutDashboard className="mr-2 h-4 w-4" />
+            Dashboard
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="report" className="mt-6">
           <EnviroCheckForm />
@@ -121,6 +126,9 @@ export default function Home() {
         </TabsContent>
         <TabsContent value="route" className="mt-6">
             <RouteCheckView />
+        </TabsContent>
+         <TabsContent value="dashboard" className="mt-6">
+            <DashboardView />
         </TabsContent>
       </Tabs>
     </main>
