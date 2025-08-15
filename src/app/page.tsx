@@ -6,10 +6,11 @@ import Image from 'next/image';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { EnviroCheckForm } from '@/components/enviro-check-form';
 import { ComplaintsView } from '@/components/complaints-view';
+import { RouteCheckView } from '@/components/route-check-view';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Building2, ListChecks, LogOut, Loader2 } from 'lucide-react';
+import { Building2, ListChecks, LogOut, Loader2, Route } from 'lucide-react';
 import { signOutUser } from '@/lib/firebase/service';
 
 export default function Home() {
@@ -86,7 +87,7 @@ export default function Home() {
       </header>
       
       <Tabs defaultValue="report" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="report">
             <Building2 className="mr-2 h-4 w-4" />
             Report Issue
@@ -95,12 +96,19 @@ export default function Home() {
             <ListChecks className="mr-2 h-4 w-4" />
             View Complaints
           </TabsTrigger>
+          <TabsTrigger value="route">
+            <Route className="mr-2 h-4 w-4" />
+            Check Route
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="report" className="mt-6">
           <EnviroCheckForm />
         </TabsContent>
         <TabsContent value="view" className="mt-6">
           <ComplaintsView />
+        </TabsContent>
+        <TabsContent value="route" className="mt-6">
+            <RouteCheckView />
         </TabsContent>
       </Tabs>
     </main>

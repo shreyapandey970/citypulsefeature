@@ -2,25 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PotholeIcon } from "@/components/icons/pothole-icon";
-import { Trash2, LightbulbOff, TreeDeciduous, Loader2, MapPin, Clock, CheckCircle, Hourglass, Trash } from 'lucide-react';
-import { listenToUserReports, deleteReport } from '@/lib/firebase/service';
+import { Trash2, LightbulbOff, TreeDeciduous, Loader2, MapPin, Clock, CheckCircle, Hourglass } from 'lucide-react';
+import { listenToAllReports } from '@/lib/firebase/service';
 import { formatDistance, format } from 'date-fns';
-import { useToast } from '@/hooks/use-toast';
 
 type IssueType = 'pothole' | 'garbage' | 'streetlight' | 'fallen_tree' | 'other';
 type Status = 'pending' | 'in progress' | 'resolved';
@@ -34,7 +21,6 @@ type Complaint = {
     imageUrl: string;
     dataAiHint?: string;
     complaintTime?: Date;
-    resolvedTime?: Date;
     status: Status;
 };
 
@@ -49,65 +35,13 @@ const IssueIcon = ({ issueType, className }: { issueType: Complaint['issueType']
     }
 }
 
-const calculateTimeDifference = (start: Date, end: Date) => {
-    return formatDistance(end, start, { addSuffix: false });
-};
-
-
-const WithdrawButton = ({ reportId }: { reportId: string }) => {
-    const { toast } = useToast();
-    const [isDeleting, setIsDeleting] = useState(false);
-
-    const handleWithdraw = async () => {
-        setIsDeleting(true);
-        try {
-            await deleteReport(reportId);
-            toast({
-                title: 'Complaint Withdrawn',
-                description: 'Your report has been successfully deleted.',
-            });
-        } catch (error) {
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Failed to withdraw the complaint.',
-            });
-            console.error(error);
-        }
-        // No need to set isDeleting to false, as the component will unmount on success
-    };
-
-    return (
-        <AlertDialog>
-            <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" disabled={isDeleting}>
-                    {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash className="mr-2 h-4 w-4" />}
-                    Withdraw Complaint
-                </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete your complaint
-                        from our servers.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleWithdraw}>Continue</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-    );
-};
-
-export function ComplaintsView() {
+export function RouteCheckView() {
     const [complaints, setComplaints] = useState<Complaint[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = listenToUserReports((reportsFromDb) => {
+        // Listen to all reports from all users
+        const unsubscribe = listenToAllReports((reportsFromDb) => {
             const formattedComplaints: Complaint[] = reportsFromDb.map((report: any) => ({
                 id: report.id,
                 issueType: report.issueType,
@@ -117,7 +51,6 @@ export function ComplaintsView() {
                 imageUrl: report.imageDataUri,
                 dataAiHint: report.issueType,
                 complaintTime: report.complaintTime,
-                resolvedTime: report.resolvedTime,
                 status: report.status,
             }));
             // Sort by complaint time, newest first
@@ -130,14 +63,13 @@ export function ComplaintsView() {
         return () => unsubscribe();
     }, []);
 
-
-    const renderComplaints = () => {
+    const renderAllComplaints = () => {
         if (isLoading) {
             return (
                 <div className="flex flex-col items-center justify-center text-center p-12">
                     <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
                     <p className="text-lg text-muted-foreground font-semibold">
-                        Loading your complaints...
+                        Loading all reported issues...
                     </p>
                 </div>
             );
@@ -189,15 +121,6 @@ export function ComplaintsView() {
                                         {complaint.status === 'resolved' ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Hourglass className="w-4 h-4 text-orange-500" />}
                                         <span className="capitalize">{complaint.status}</span>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <Clock className="w-4 h-4" />
-                                        <span>
-                                            Resolution Time: {complaint.resolvedTime && complaint.complaintTime ? calculateTimeDifference(complaint.complaintTime, complaint.resolvedTime) : 'Not yet resolved'}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="mt-4 flex justify-end">
-                                     <WithdrawButton reportId={complaint.id} />
                                 </div>
                             </div>
                         </Card>
@@ -208,7 +131,7 @@ export function ComplaintsView() {
         
         return (
             <div className="text-center p-12 text-muted-foreground bg-secondary/30 rounded-md">
-                <p>No complaints found. Be the first to submit one!</p>
+                <p>No complaints have been reported yet.</p>
             </div>
         );
     };
@@ -216,14 +139,15 @@ export function ComplaintsView() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="font-headline text-2xl">Your Complaint Feed</CardTitle>
+                <CardTitle className="font-headline text-2xl">All Public Complaints</CardTitle>
                 <CardDescription>
-                    Your reported issues are shown here in real-time. You can withdraw a complaint if it's no longer relevant.
+                    View all issues reported by the community to plan your route.
                 </CardDescription>
             </CardHeader>
             <CardContent>
+                {/* Future implementation: Add inputs for start and destination */}
                 <div className="mt-6">
-                    {renderComplaints()}
+                    {renderAllComplaints()}
                 </div>
             </CardContent>
         </Card>

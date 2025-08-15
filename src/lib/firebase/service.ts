@@ -1,6 +1,6 @@
 import {initializeApp, getApp, getApps, FirebaseApp} from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, User, updateProfile } from "firebase/auth";
-import {getFirestore, collection, addDoc, getDocs, query, doc, updateDoc, Firestore, serverTimestamp, onSnapshot, Unsubscribe, where} from 'firebase/firestore';
+import {getFirestore, collection, addDoc, getDocs, query, doc, updateDoc, Firestore, serverTimestamp, onSnapshot, Unsubscribe, where, deleteDoc} from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
@@ -117,24 +117,52 @@ export const updateReport = async (reportId: string, assessmentResult: any) => {
     }
   };
 
-export const updateReportStatus = async (reportId: string, status: 'pending' | 'in progress' | 'resolved') => {
+export const deleteReport = async (reportId: string) => {
     try {
         if (!db) {
-            console.warn("Firebase config not found, skipping Firestore update.");
+            console.warn("Firebase config not found, skipping Firestore delete.");
             return;
         }
-        const reportRef = doc(db, 'reports', reportId);
-        const updateData: any = { status };
-        if (status === 'resolved') {
-            updateData.resolvedTime = serverTimestamp();
+        const user = getCurrentUser();
+        if (!user) {
+            throw new Error("User not logged in");
         }
-        await updateDoc(reportRef, updateData);
-        console.log('Report status updated for ID: ', reportId);
+        const reportRef = doc(db, 'reports', reportId);
+        // Optional: you could add a security check here to ensure the user owns the report before deleting
+        await deleteDoc(reportRef);
+        console.log('Report deleted with ID: ', reportId);
     } catch (e) {
-        console.error('Error updating report status: ', e);
+        console.error('Error deleting document: ', e);
         throw e;
     }
 };
+
+export const listenToAllReports = (callback: (reports: any[]) => void): Unsubscribe => {
+    if (!db) {
+        console.warn("Firebase config not found, not listening to reports.");
+        callback([]);
+        return () => {}; // Return a no-op unsubscribe function
+    }
+    const reportsCollection = collection(db, 'reports');
+    
+    const unsubscribe = onSnapshot(reportsCollection, (querySnapshot) => {
+        const reports = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                complaintTime: data.complaintTime?.toDate(),
+                resolvedTime: data.resolvedTime?.toDate(),
+            };
+        });
+        callback(reports);
+    }, (error) => {
+        console.error("Error listening to all reports:", error);
+    });
+
+    return unsubscribe;
+}
+
 
 export const listenToUserReports = (callback: (reports: any[]) => void): Unsubscribe => {
     const user = getCurrentUser();
