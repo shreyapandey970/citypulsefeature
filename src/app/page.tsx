@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import Link from 'next/link';
 import { EnviroCheckForm } from '@/components/enviro-check-form';
@@ -26,13 +25,14 @@ export default function Home() {
       if (user) {
         if (user.email === 'admin@gmail.com') {
           router.push('/admin');
-          return;
+          // No need to setLoading(false) here, as we are redirecting away.
+        } else {
+          setUser(user);
+          setLoading(false);
         }
-        setUser(user);
       } else {
         router.push('/login');
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -56,6 +56,12 @@ export default function Home() {
       </div>
     );
   }
+  
+  if (!user) {
+    // This case handles the brief moment before redirection if a non-admin user is logged out.
+    // It also prevents rendering the main content for a user who should be redirected.
+    return null;
+  }
 
   return (
     <main className="container mx-auto max-w-4xl py-12 px-4">
@@ -76,14 +82,6 @@ export default function Home() {
 
         {user && (
             <div className="flex items-center gap-4">
-                {user.email === 'admin@gmail.com' && (
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href="/admin">
-                        <ShieldCheck className="mr-2 h-4 w-4" />
-                        Admin
-                      </Link>
-                    </Button>
-                )}
                 <div className="text-right">
                     <div className="font-semibold">{user.displayName}</div>
                     <div className="text-xs text-muted-foreground">{user.email}</div>

@@ -31,14 +31,18 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const user = await signInUser(email, password);
-      toast({
-        title: "Login Successful",
-        description: "Welcome back!",
-      });
-
+      
       if (user.email === 'admin@gmail.com') {
+        toast({
+            title: "Admin Login Successful",
+            description: "Redirecting to the dashboard...",
+        });
         router.push('/admin');
       } else {
+        toast({
+            title: "Login Successful",
+            description: "Welcome back!",
+        });
         router.push("/");
       }
 
@@ -48,8 +52,7 @@ export default function LoginPage() {
         title: "Login Failed",
         description: error.message,
       });
-    } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
