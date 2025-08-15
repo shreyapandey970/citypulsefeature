@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L, { LatLngExpression, LatLngBoundsExpression } from 'leaflet';
 import Image from 'next/image';
@@ -23,7 +23,7 @@ type Complaint = {
 };
 
 const getIconHtml = (issueType: IssueType) => {
-    const commonStyle = { width: '24px', height: '24px', color: 'white' };
+    const commonStyle: React.CSSProperties = { width: '24px', height: '24px', color: 'white' };
     let icon;
     switch (issueType) {
         case 'pothole': icon = <PotholeIcon style={commonStyle} />; break;
@@ -68,20 +68,8 @@ const createComplaintIcon = (issueType: IssueType, severity: 'high' | 'medium' |
   });
 };
 
-const MapUpdater = ({ bounds }: { bounds: LatLngBoundsExpression | null }) => {
+const MapUpdater = ({ complaints }: { complaints: Complaint[] }) => {
     const map = useMap();
-    useEffect(() => {
-        if (bounds) {
-            map.fitBounds(bounds, { padding: [50, 50] });
-        }
-    }, [bounds, map]);
-    return null;
-}
-
-export function MapView({ complaints }: { complaints: Complaint[] }) {
-    const [mapCenter, setMapCenter] = useState<LatLngExpression>([51.505, -0.09]);
-    const [bounds, setBounds] = useState<LatLngBoundsExpression | null>(null);
-
     useEffect(() => {
         const validComplaints = complaints.filter(c => {
             const parts = c.location.split(',').map(p => p.trim());
@@ -89,14 +77,18 @@ export function MapView({ complaints }: { complaints: Complaint[] }) {
         });
 
         if (validComplaints.length > 0) {
-            const newBounds = L.latLngBounds(validComplaints.map(c => {
+            const bounds = L.latLngBounds(validComplaints.map(c => {
                 const [lat, lng] = c.location.split(',').map(p => parseFloat(p.trim()));
                 return [lat, lng] as LatLngExpression;
             }));
-            setBounds(newBounds);
-            setMapCenter(newBounds.getCenter());
+            map.fitBounds(bounds, { padding: [50, 50] });
         }
-    }, [complaints]);
+    }, [complaints, map]);
+    return null;
+}
+
+export function MapView({ complaints }: { complaints: Complaint[] }) {
+    const [mapCenter, setMapCenter] = useState<LatLngExpression>([51.505, -0.09]);
     
     // Fallback for when map container fails to initialize (e.g. in some SSR scenarios or errors)
     if (typeof window === 'undefined') {
@@ -110,12 +102,12 @@ export function MapView({ complaints }: { complaints: Complaint[] }) {
     }
     
     return (
-        <MapContainer center={mapCenter} zoom={13} scrollWheelZoom={false} className="h-[500px] w-full rounded-lg z-0" style={{'zIndex': 0}}>
+        <MapContainer center={mapCenter} zoom={13} scrollWheelZoom={false} className="h-[500px] w-full rounded-lg" style={{'zIndex': 0}}>
             <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <MapUpdater bounds={bounds} />
+            <MapUpdater complaints={complaints} />
             {complaints.map(complaint => {
                 const parts = complaint.location.split(',').map(p => p.trim());
                 if (parts.length !== 2) return null;
