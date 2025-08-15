@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L, { LatLngExpression, LatLngBoundsExpression } from 'leaflet';
+import L, { LatLngExpression } from 'leaflet';
 import Image from 'next/image';
 
 import { PotholeIcon } from "@/components/icons/pothole-icon";
@@ -100,9 +100,17 @@ export function MapView({ complaints }: { complaints: Complaint[] }) {
             ></iframe>
         );
     }
+
+    // Reset Leaflet container on mount to prevent duplicate initialization
+    useEffect(() => {
+      const container = L.DomUtil.get("map");
+      if (container != null) {
+        (container as any)._leaflet_id = null;
+      }
+    }, []);
     
     return (
-        <MapContainer center={mapCenter} zoom={13} scrollWheelZoom={false} className="h-[500px] w-full rounded-lg z-0">
+        <MapContainer id="map" center={mapCenter} zoom={13} scrollWheelZoom={false} className="h-[500px] w-full rounded-lg z-0">
             <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
