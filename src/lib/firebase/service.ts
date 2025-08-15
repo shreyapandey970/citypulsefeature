@@ -1,6 +1,7 @@
 import {initializeApp, getApp, getApps, FirebaseApp} from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, User } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, User, updateProfile } from "firebase/auth";
 import {getFirestore, collection, addDoc, getDocs, query, doc, updateDoc, Firestore, serverTimestamp, onSnapshot, Unsubscribe, where} from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -14,17 +15,35 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let db: Firestore;
 let auth;
+let storage: FirebaseStorage;
 
 if (typeof window !== 'undefined' && firebaseConfig.projectId) {
     app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     db = getFirestore(app);
     auth = getAuth(app);
+    storage = getStorage(app);
 }
 
-export const signUpUser = async (email: string, password: string): Promise<User> => {
+export const signUpUser = async (email: string, password: string, name: string, profilePic: File | null): Promise<User> => {
     if (!auth) throw new Error("Firebase not initialized");
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    return userCredential.user;
+    const user = userCredential.user;
+
+    let photoURL: string | undefined = undefined;
+
+    if (profilePic) {
+        const storageRef = ref(storage, `profile-pics/${user.uid}/${profilePic.name}`);
+        await uploadBytes(storageRef, profilePic);
+        photoURL = await getDownloadURL(storageRef);
+    }
+
+    await updateProfile(user, {
+        displayName: name,
+        photoURL: photoURL
+    });
+    
+    // We can just return the user from auth, but this is a good pattern if you want to store more user data in Firestore
+    return user;
 };
 
 export const signInUser = async (email: string, password: string): Promise<User> => {

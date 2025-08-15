@@ -58,9 +58,9 @@ export default function LoginPage() {
                     CityPulseAI
                 </h1>
             </div>
-          <CardTitle className="text-2xl">Login</CardTitle>
+          <CardTitle className="text-2xl">Welcome Back</CardTitle>
           <CardDescription>
-            Enter your email below to login to your account
+            Enter your email and password to sign in.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -74,6 +74,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
               />
             </div>
             <div className="grid gap-2">
@@ -84,11 +85,12 @@ export default function LoginPage() {
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
                 />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Login
+              Sign In
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">

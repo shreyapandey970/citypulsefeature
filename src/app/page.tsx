@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { EnviroCheckForm } from '@/components/enviro-check-form';
 import { ComplaintsView } from '@/components/complaints-view';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Building2, ListChecks, LogOut, Loader2 } from 'lucide-react';
 import { signOutUser } from '@/lib/firebase/service';
 
@@ -31,8 +33,14 @@ export default function Home() {
 
   const handleSignOut = async () => {
     await signOutUser();
+    setUser(null);
     router.push('/login');
   };
+
+  const getInitials = (name?: string | null) => {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  }
 
   if (loading) {
     return (
@@ -43,25 +51,38 @@ export default function Home() {
   }
 
   return (
-    <main className="container mx-auto max-w-2xl py-12 px-4">
-       <header className="text-center mb-8 relative">
-        <div className="inline-flex items-center gap-3">
-          <div className="p-3 bg-primary/20 rounded-lg">
-            <Building2 className="w-8 h-8 text-primary" />
-          </div>
-          <h1 className="text-4xl md:text-5xl font-headline font-bold text-foreground">
-            CityPulseAI
-          </h1>
+    <main className="container mx-auto max-w-4xl py-12 px-4">
+      <header className="flex justify-between items-center mb-8">
+        <div className="flex items-center gap-4">
+            <div className="p-3 bg-primary/20 rounded-lg">
+              <Building2 className="w-8 h-8 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-headline font-bold text-foreground">
+                CityPulseAI
+              </h1>
+              <p className="text-muted-foreground text-base">
+                Help keep our environment clean. Report issues or view existing ones on your route.
+              </p>
+            </div>
         </div>
-        <p className="text-muted-foreground mt-2 text-lg">
-          Help keep our environment clean. Report issues or view existing ones on your route.
-        </p>
-        <div className="absolute top-0 right-0">
-          <Button variant="outline" size="sm" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
-        </div>
+
+        {user && (
+            <div className="flex items-center gap-4">
+                <div className="text-right">
+                    <div className="font-semibold">{user.displayName}</div>
+                    <div className="text-xs text-muted-foreground">{user.email}</div>
+                </div>
+                <Avatar>
+                    <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
+                    <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+                </Avatar>
+                <Button variant="outline" size="sm" onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Logout
+                </Button>
+            </div>
+        )}
       </header>
       
       <Tabs defaultValue="report" className="w-full">
