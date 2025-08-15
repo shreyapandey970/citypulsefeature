@@ -23,13 +23,13 @@ type Complaint = {
 };
 
 const getIconHtml = (issueType: IssueType) => {
-    const commonStyle = "width: 24px; height: 24px; color: white;";
+    const commonStyle = { width: '24px', height: '24px', color: 'white' };
     let icon;
     switch (issueType) {
-        case 'pothole': icon = <PotholeIcon style={{...commonStyle}} />; break;
-        case 'garbage': icon = <Trash2 style={{...commonStyle}} />; break;
-        case 'streetlight': icon = <LightbulbOff style={{...commonStyle}} />; break;
-        case 'fallen_tree': icon = <TreeDeciduous style={{...commonStyle}} />; break;
+        case 'pothole': icon = <PotholeIcon style={commonStyle} />; break;
+        case 'garbage': icon = <Trash2 style={commonStyle} />; break;
+        case 'streetlight': icon = <LightbulbOff style={commonStyle} />; break;
+        case 'fallen_tree': icon = <TreeDeciduous style={commonStyle} />; break;
         default: icon = <div style={{...commonStyle, fontSize: '18px', textAlign: 'center'}}>?</div>;
     }
     return renderToStaticMarkup(icon);
