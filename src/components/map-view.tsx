@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import L, { LatLngExpression } from 'leaflet';
 import Image from 'next/image';
 
@@ -68,26 +68,34 @@ const createComplaintIcon = (issueType: IssueType, severity: 'high' | 'medium' |
   });
 };
 
-const MapUpdater = ({ complaints }: { complaints: Complaint[] }) => {
+const MapUpdater = ({ complaints, route }: { complaints: Complaint[], route: LatLngExpression[] }) => {
     const map = useMap();
     useEffect(() => {
-        const validComplaints = complaints.filter(c => {
-            const parts = c.location.split(',').map(p => p.trim());
-            return parts.length === 2 && !isNaN(parseFloat(parts[0])) && !isNaN(parseFloat(parts[1]));
-        });
-
-        if (validComplaints.length > 0) {
-            const bounds = L.latLngBounds(validComplaints.map(c => {
-                const [lat, lng] = c.location.split(',').map(p => parseFloat(p.trim()));
+        const validComplaintPoints = complaints
+            .map(c => {
+                const parts = c.location.split(',').map(p => p.trim());
+                if (parts.length !== 2 || isNaN(parseFloat(parts[0])) || isNaN(parseFloat(parts[1]))) {
+                    return null;
+                }
+                const [lat, lng] = parts.map(p => parseFloat(p.trim()));
                 return [lat, lng] as LatLngExpression;
-            }));
+            })
+            .filter(Boolean) as LatLngExpression[];
+
+        const allPoints = [...validComplaintPoints, ...route];
+
+        if (allPoints.length > 0) {
+            const bounds = L.latLngBounds(allPoints);
             map.fitBounds(bounds, { padding: [50, 50] });
+        } else {
+            // Default view if no points are available
+             map.setView([51.505, -0.09], 5);
         }
-    }, [complaints, map]);
+    }, [complaints, route, map]);
     return null;
 }
 
-export function MapView({ complaints }: { complaints: Complaint[] }) {
+export function MapView({ complaints, route }: { complaints: Complaint[], route: LatLngExpression[] }) {
     const [mapCenter, setMapCenter] = useState<LatLngExpression>([51.505, -0.09]);
     
     // Fallback for when map container fails to initialize (e.g. in some SSR scenarios or errors)
@@ -115,7 +123,10 @@ export function MapView({ complaints }: { complaints: Complaint[] }) {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <MapUpdater complaints={complaints} />
+            <MapUpdater complaints={complaints} route={route} />
+            {route.length > 1 && (
+                <Polyline positions={route} color="blue" weight={5} opacity={0.7} />
+            )}
             {complaints.map(complaint => {
                 const parts = complaint.location.split(',').map(p => p.trim());
                 if (parts.length !== 2) return null;
