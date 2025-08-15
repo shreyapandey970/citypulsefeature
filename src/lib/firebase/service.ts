@@ -1,3 +1,4 @@
+
 import {initializeApp, getApp, getApps, FirebaseApp} from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, User, updateProfile } from "firebase/auth";
 import {getFirestore, collection, addDoc, getDocs, query, doc, updateDoc, Firestore, serverTimestamp, onSnapshot, Unsubscribe, where, deleteDoc} from 'firebase/firestore';
@@ -27,12 +28,9 @@ if (typeof window !== 'undefined' && firebaseConfig.projectId) {
 export const signUpUser = async (email: string, password: string, name: string, profilePic: File | null): Promise<User> => {
     if (!auth) throw new Error("Firebase not initialized");
     
-    // Create the user first
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // This block will run in the background. If it fails (e.g., due to storage rules or plan limits),
-    // it will log the error but not block the user creation process.
     const updateUserProfile = async () => {
         try {
             let photoURL: string | undefined = undefined;
@@ -42,8 +40,7 @@ export const signUpUser = async (email: string, password: string, name: string, 
                     await uploadBytes(storageRef, profilePic);
                     photoURL = await getDownloadURL(storageRef);
                 } catch (storageError) {
-                    console.error("Could not upload profile picture. This might be due to Firebase Storage rules or plan limitations.", storageError);
-                    // Silently fail on storage error, user is already created.
+                    console.error("Could not upload profile picture. This might be due to Firebase Storage rules or plan limitations. Skipping.", storageError);
                 }
             }
 
@@ -57,7 +54,7 @@ export const signUpUser = async (email: string, password: string, name: string, 
         }
     };
     
-    updateUserProfile(); // Fire and forget the profile update.
+    updateUserProfile(); 
 
     return user;
 };
@@ -123,6 +120,27 @@ export const updateReport = async (reportId: string, assessmentResult: any) => {
       throw e;
     }
   };
+
+export const updateReportStatus = async (reportId: string, status: 'pending' | 'in progress' | 'resolved') => {
+    try {
+        if (!db) {
+            console.warn("Firebase config not found, skipping Firestore update.");
+            return;
+        }
+        const reportRef = doc(db, 'reports', reportId);
+        const updateData: { status: string, resolvedTime?: any } = { status };
+        
+        if (status === 'resolved') {
+            updateData.resolvedTime = serverTimestamp();
+        }
+
+        await updateDoc(reportRef, updateData);
+        console.log('Report status updated for ID: ', reportId);
+    } catch (e) {
+        console.error('Error updating report status: ', e);
+        throw e;
+    }
+};
 
 export const deleteReport = async (reportId: string) => {
     try {

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -29,12 +30,18 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await signInUser(email, password);
+      const user = await signInUser(email, password);
       toast({
         title: "Login Successful",
         description: "Welcome back!",
       });
-      router.push("/");
+
+      if (user.email === 'admin@gmail.com') {
+        router.push('/admin');
+      } else {
+        router.push("/");
+      }
+
     } catch (error: any) {
       toast({
         variant: "destructive",

@@ -1,16 +1,18 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
+import Link from 'next/link';
 import { EnviroCheckForm } from '@/components/enviro-check-form';
 import { ComplaintsView } from '@/components/complaints-view';
 import { RouteCheckView } from '@/components/route-check-view';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Building2, ListChecks, LogOut, Loader2, Route } from 'lucide-react';
+import { Building2, ListChecks, LogOut, Loader2, Route, ShieldCheck } from 'lucide-react';
 import { signOutUser } from '@/lib/firebase/service';
 
 export default function Home() {
@@ -22,6 +24,10 @@ export default function Home() {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
+        if (user.email === 'admin@gmail.com') {
+          router.push('/admin');
+          return;
+        }
         setUser(user);
       } else {
         router.push('/login');
@@ -70,6 +76,14 @@ export default function Home() {
 
         {user && (
             <div className="flex items-center gap-4">
+                {user.email === 'admin@gmail.com' && (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/admin">
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        Admin
+                      </Link>
+                    </Button>
+                )}
                 <div className="text-right">
                     <div className="font-semibold">{user.displayName}</div>
                     <div className="text-xs text-muted-foreground">{user.email}</div>
