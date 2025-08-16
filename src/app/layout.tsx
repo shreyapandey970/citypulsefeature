@@ -1,3 +1,4 @@
+
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -34,7 +35,7 @@ export default function RootLayout({
           crossOrigin=""/>
       </head>
       <body className={cn(
-        "min-h-screen bg-background font-sans antialiased",
+        "min-h-screen bg-background font-sans antialiased flex flex-col",
         fontInter.variable,
         fontSpaceGrotesk.variable
       )}>
@@ -44,7 +45,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <div className="flex-grow">
+            {children}
+          </div>
+          <footer className="border-t py-6">
+            <div className="container mx-auto text-center text-sm text-muted-foreground">
+              <p>&copy; {new Date().getFullYear()} CityPulseAI. All Rights Reserved.</p>
+            </div>
+          </footer>
           <Toaster />
         </ThemeProvider>
       </body>
