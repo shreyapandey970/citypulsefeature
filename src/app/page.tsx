@@ -11,8 +11,9 @@ import { DashboardView } from '@/components/dashboard-view';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Building2, ListChecks, LogOut, Loader2, Route, LayoutDashboard } from 'lucide-react';
+import { Building2, ListChecks, LogOut, Loader2, Route, LayoutDashboard, ScanEye, Send, Wrench } from 'lucide-react';
 import { signOutUser } from '@/lib/firebase/service';
+import Image from 'next/image';
 
 export default function Home() {
   const router = useRouter();
@@ -60,6 +61,24 @@ export default function Home() {
     return null;
   }
 
+  const featureCards = [
+    {
+      icon: <Send className="w-10 h-10 text-primary" />,
+      title: "1. Report the Issue",
+      description: "Snap a photo or video of a civic issue like a pothole or garbage pile. Add the location to start your report."
+    },
+    {
+      icon: <ScanEye className="w-10 h-10 text-primary" />,
+      title: "2. Let AI Verify It",
+      description: "Our AI analyzes your submission to identify the issue type and assess its severity, ensuring accuracy."
+    },
+    {
+      icon: <Wrench className="w-10 h-10 text-primary" />,
+      title: "3. See It Resolved",
+      description: "Track the status of your report and get notified when the issue is resolved by city administrators."
+    }
+  ]
+
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -89,49 +108,91 @@ export default function Home() {
           )}
         </div>
       </header>
-      <main className="container mx-auto max-w-5xl py-12 px-4">
-        <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-extrabold text-foreground tracking-tighter">
-                Report. Resolve. Rejuvenate.
-            </h1>
-            <p className="text-muted-foreground text-lg mt-4 max-w-2xl mx-auto">
-                Your partner in building a better, cleaner community. Identify issues,
-                track progress, and see the impact you make, all with the help of AI.
-            </p>
-        </div>
-        
-        <Tabs defaultValue="report" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
-            <TabsTrigger value="report">
-              <Building2 className="mr-2 h-4 w-4" />
-              Report Issue
-            </TabsTrigger>
-            <TabsTrigger value="view">
-              <ListChecks className="mr-2 h-4 w-4" />
-              View Complaints
-            </TabsTrigger>
-            <TabsTrigger value="route">
-              <Route className="mr-2 h-4 w-4" />
-              Check Route
-            </TabsTrigger>
-            <TabsTrigger value="dashboard">
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              Dashboard
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="report" className="mt-6">
-            <EnviroCheckForm />
-          </TabsContent>
-          <TabsContent value="view" className="mt-6">
-            <ComplaintsView />
-          </TabsContent>
-          <TabsContent value="route" className="mt-6">
-              <RouteCheckView />
-          </TabsContent>
-          <TabsContent value="dashboard" className="mt-6">
-              <DashboardView />
-          </TabsContent>
-        </Tabs>
+
+      <main className="container mx-auto px-4">
+        {/* Hero Section */}
+        <section className="py-20 md:py-32 text-center">
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+                <div className="text-left">
+                    <Badge className="mb-4">Community Powered. AI Driven.</Badge>
+                    <h1 className="text-4xl md:text-5xl font-extrabold text-foreground tracking-tighter mb-4">
+                        Your Voice for a Better City
+                    </h1>
+                    <p className="text-muted-foreground text-lg mb-8 max-w-xl">
+                        CityPulseAI empowers you to report civic issues effortlessly.
+                        From potholes to broken streetlights, your reports help create a cleaner, safer community for everyone.
+                    </p>
+                    <a href="#reporting-tool">
+                        <Button size="lg">Start a Report</Button>
+                    </a>
+                </div>
+                <div>
+                     <Image 
+                        src="https://placehold.co/600x400.png"
+                        alt="A clean city street intersection"
+                        width={600}
+                        height={400}
+                        className="rounded-xl shadow-lg"
+                        data-ai-hint="city street"
+                     />
+                </div>
+            </div>
+        </section>
+
+        {/* How It Works Section */}
+        <section className="py-20 bg-secondary/50 rounded-xl">
+            <div className="text-center mb-12">
+                <h2 className="text-3xl font-bold text-foreground tracking-tight">A Simple, Powerful Process</h2>
+                <p className="text-muted-foreground mt-2">Making a difference is as easy as 1, 2, 3.</p>
+            </div>
+            <div className="grid md:grid-cols-3 gap-8 text-center max-w-5xl mx-auto">
+                {featureCards.map((feature, index) => (
+                    <div key={index} className="flex flex-col items-center">
+                        <div className="p-4 bg-background rounded-full shadow-md mb-4">
+                          {feature.icon}
+                        </div>
+                        <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+                        <p className="text-muted-foreground">{feature.description}</p>
+                    </div>
+                ))}
+            </div>
+        </section>
+
+        {/* Reporting Tool Section */}
+        <section id="reporting-tool" className="py-20">
+          <Tabs defaultValue="report" className="w-full max-w-5xl mx-auto">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+              <TabsTrigger value="report">
+                <Building2 className="mr-2 h-4 w-4" />
+                Report Issue
+              </TabsTrigger>
+              <TabsTrigger value="view">
+                <ListChecks className="mr-2 h-4 w-4" />
+                View Complaints
+              </TabsTrigger>
+              <TabsTrigger value="route">
+                <Route className="mr-2 h-4 w-4" />
+                Check Route
+              </TabsTrigger>
+              <TabsTrigger value="dashboard">
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                Dashboard
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="report" className="mt-6">
+              <EnviroCheckForm />
+            </TabsContent>
+            <TabsContent value="view" className="mt-6">
+              <ComplaintsView />
+            </TabsContent>
+            <TabsContent value="route" className="mt-6">
+                <RouteCheckView />
+            </TabsContent>
+            <TabsContent value="dashboard" className="mt-6">
+                <DashboardView />
+            </TabsContent>
+          </Tabs>
+        </section>
       </main>
     </>
   );
