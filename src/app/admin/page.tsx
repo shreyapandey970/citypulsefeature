@@ -15,6 +15,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ThemeToggle } from '@/components/theme-toggle';
 
 type IssueType = 'pothole' | 'garbage' | 'streetlight' | 'fallen_tree' | 'other';
 type Status = 'pending' | 'in progress' | 'resolved';
@@ -164,6 +165,7 @@ export default function AdminPage() {
 
                 {user && (
                     <div className="flex items-center gap-4">
+                        <ThemeToggle />
                         <Avatar className="h-9 w-9">
                            <AvatarFallback>A</AvatarFallback>
                         </Avatar>

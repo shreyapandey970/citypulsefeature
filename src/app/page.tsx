@@ -15,6 +15,7 @@ import { Building2, ListChecks, LogOut, Loader2, Route, LayoutDashboard, ScanEye
 import { signOutUser } from '@/lib/firebase/service';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function Home() {
   const router = useRouter();
@@ -93,6 +94,7 @@ export default function Home() {
 
           {user && (
               <div className="flex items-center gap-4">
+                  <ThemeToggle />
                   <div className="text-right hidden sm:block">
                       <div className="font-semibold text-sm">{user.displayName}</div>
                       <div className="text-xs text-muted-foreground">{user.email}</div>
