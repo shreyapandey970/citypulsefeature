@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Building2, ListChecks, LogOut, Loader2, Route, LayoutDashboard, ScanEye, Send, Wrench } from 'lucide-react';
 import { signOutUser } from '@/lib/firebase/service';
 import Image from 'next/image';
+import { Badge } from '@/components/ui/badge';
 
 export default function Home() {
   const router = useRouter();
