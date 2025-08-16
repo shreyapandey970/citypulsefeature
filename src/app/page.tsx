@@ -16,6 +16,15 @@ import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Navbar } from '@/components/navbar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 
 export type View = 'home' | 'report' | 'view' | 'route' | 'dashboard';
 
@@ -128,18 +137,31 @@ export default function Home() {
           {user && (
               <div className="flex items-center gap-4">
                   <ThemeToggle />
-                  <div className="text-right hidden sm:block">
-                      <div className="font-semibold text-sm">{user.displayName}</div>
-                      <div className="text-xs text-muted-foreground">{user.email}</div>
-                  </div>
-                  <Avatar className="h-9 w-9">
-                      <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
-                      <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
-                  </Avatar>
-                  <Button variant="ghost" size="sm" onClick={handleSignOut}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Logout
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                       <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                            <Avatar className="h-9 w-9">
+                                <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
+                                <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+                            </Avatar>
+                       </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56" align="end" forceMount>
+                        <DropdownMenuLabel className="font-normal">
+                        <div className="flex flex-col space-y-1">
+                            <p className="text-sm font-medium leading-none">{user.displayName}</p>
+                            <p className="text-xs leading-none text-muted-foreground">
+                            {user.email}
+                            </p>
+                        </div>
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleSignOut}>
+                            <LogOut className="mr-2 h-4 w-4" />
+                            <span>Log out</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
               </div>
           )}
         </div>
