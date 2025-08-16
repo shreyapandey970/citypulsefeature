@@ -46,12 +46,12 @@ const HeroSection = () => (
             </div>
             <div>
                  <Image 
-                    src="https://placehold.co/600x400.png"
-                    alt="A clean city street intersection"
+                    src="https://storage.googleapis.com/project-spark-308115-vision-test-dataset/6c21e649-6f94-4340-a359-22a96b34e40e.png"
+                    alt="A clean city street intersection with a river flowing through it."
                     width={600}
                     height={400}
                     className="rounded-xl shadow-lg"
-                    data-ai-hint="city street"
+                    data-ai-hint="city street river"
                  />
             </div>
         </div>
