@@ -163,7 +163,7 @@ export default function AdminPage() {
     return (
         <>
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="container h-14 flex items-center justify-between px-4">
+            <div className="flex h-14 items-center justify-between px-4">
                 <div className="flex items-center gap-4">
                     <Building2 className="w-6 h-6 text-primary" />
                     <h1 className="text-xl font-bold text-foreground">
