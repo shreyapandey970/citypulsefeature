@@ -46,7 +46,7 @@ const HeroSection = () => (
             </div>
             <div>
                  <Image 
-                    src="https://storage.googleapis.com/project-spark-308115-vision-test-dataset/6c21e649-6f94-4340-a359-22a96b34e40e.png"
+                    src="https://natureconservancy-h.assetsadobe.com/is/image/content/dam/tnc/nature/en/photos/i/s/iStock-509662042-1800.jpg?crop=0%2C72%2C1800%2C990&wid=1300&hei=715&scl=1.3846153846153846"
                     alt="A clean city street intersection with a river flowing through it."
                     width={600}
                     height={400}
