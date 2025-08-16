@@ -65,10 +65,10 @@ export default function Home() {
   }
 
   return (
-    <main className="container mx-auto max-w-4xl py-12 px-4">
+    <main className="container mx-auto max-w-5xl py-12 px-4">
       <header className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-4">
-            <div className="p-3 bg-primary/20 rounded-lg">
+            <div className="p-3 bg-primary/10 rounded-lg">
               <Building2 className="w-8 h-8 text-primary" />
             </div>
             <div>
@@ -76,14 +76,14 @@ export default function Home() {
                 CityPulseAI
               </h1>
               <p className="text-muted-foreground text-base">
-                Help keep our environment clean. Report issues or view existing ones on your route.
+                Your partner in building a better, cleaner community.
               </p>
             </div>
         </div>
 
         {user && (
             <div className="flex items-center gap-4">
-                <div className="text-right">
+                <div className="text-right hidden sm:block">
                     <div className="font-semibold">{user.displayName}</div>
                     <div className="text-xs text-muted-foreground">{user.email}</div>
                 </div>
@@ -100,7 +100,7 @@ export default function Home() {
       </header>
       
       <Tabs defaultValue="report" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
           <TabsTrigger value="report">
             <Building2 className="mr-2 h-4 w-4" />
             Report Issue
