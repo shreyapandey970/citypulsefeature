@@ -14,6 +14,7 @@ import { Loader2, Building2, LogOut, CheckCircle, Hourglass, Settings, AlertTria
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 type IssueType = 'pothole' | 'garbage' | 'streetlight' | 'fallen_tree' | 'other';
 type Status = 'pending' | 'in progress' | 'resolved';
@@ -151,45 +152,45 @@ export default function AdminPage() {
     }
 
     return (
-        <main className="container mx-auto py-12 px-4">
-             <header className="flex justify-between items-center mb-8">
+        <>
+        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="container h-14 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary/20 rounded-lg">
-                    <Building2 className="w-8 h-8 text-primary" />
-                    </div>
-                    <div>
-                    <h1 className="text-3xl md:text-4xl font-headline font-bold text-foreground">
+                    <Building2 className="w-6 h-6 text-primary" />
+                    <h1 className="text-xl font-bold text-foreground">
                         Admin Dashboard
                     </h1>
-                    <p className="text-muted-foreground text-base">
-                        Oversee and manage all user-submitted reports.
-                    </p>
-                    </div>
                 </div>
 
                 {user && (
                     <div className="flex items-center gap-4">
-                        <div className="text-right">
-                            <div className="font-semibold">{user.displayName || "Admin"}</div>
-                            <div className="text-xs text-muted-foreground">{user.email}</div>
-                        </div>
-                        <Button variant="outline" size="sm" onClick={handleSignOut}>
+                        <Avatar className="h-9 w-9">
+                           <AvatarFallback>A</AvatarFallback>
+                        </Avatar>
+                        <Button variant="ghost" size="sm" onClick={handleSignOut}>
                             <LogOut className="mr-2 h-4 w-4" />
                             Logout
                         </Button>
                     </div>
                 )}
+            </div>
+        </header>
+
+        <main className="container mx-auto py-12 px-4">
+             <header className="mb-8">
+                <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
+                    All Reports
+                </h1>
+                <p className="text-muted-foreground text-base mt-2">
+                    Oversee and manage all user-submitted reports. Escalated issues are highlighted in red.
+                </p>
             </header>
             <Card>
-                <CardHeader>
-                    <CardTitle>All Complaints</CardTitle>
-                    <CardDescription>View and manage all reports submitted by users.</CardDescription>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Issue</TableHead>
+                                <TableHead className="w-[200px]">Issue</TableHead>
                                 <TableHead>Location</TableHead>
                                 <TableHead>Submitted</TableHead>
                                 <TableHead>Severity</TableHead>
@@ -242,5 +243,6 @@ export default function AdminPage() {
                 </CardContent>
             </Card>
         </main>
+        </>
     );
 }
