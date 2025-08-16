@@ -20,19 +20,21 @@ const navItems: { id: View, label: string, icon: React.ReactNode }[] = [
 
 export function Navbar({ activeView, setActiveView }: NavbarProps) {
     return (
-        <nav className="flex items-center justify-center p-2 bg-muted rounded-md">
-            <div className="flex gap-1">
-                {navItems.map((item) => (
-                     <Button
-                        key={item.id}
-                        variant={activeView === item.id ? "secondary" : "ghost"}
-                        onClick={() => setActiveView(item.id)}
-                        className="flex-1 justify-center"
-                    >
-                        {item.icon}
-                        {item.label}
-                    </Button>
-                ))}
+        <nav className="border-t">
+            <div className="container flex items-center justify-center">
+                <div className="flex gap-1">
+                    {navItems.map((item) => (
+                         <Button
+                            key={item.id}
+                            variant={activeView === item.id ? "secondary" : "ghost"}
+                            onClick={() => setActiveView(item.id)}
+                            className="flex-1 justify-center rounded-none"
+                        >
+                            {item.icon}
+                            {item.label}
+                        </Button>
+                    ))}
+                </div>
             </div>
         </nav>
     );
