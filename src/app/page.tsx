@@ -373,7 +373,7 @@ export default function Home() {
       </header>
 
       <main>
-         <section id="reporting-tool" className={`py-12 ${activeView === 'report' || activeView === 'view' ? 'flex justify-center' : ''}`}>
+         <section id="reporting-tool" className={`py-12 ${activeView !== 'home' ? 'flex justify-center' : ''}`}>
             <div className={activeView !== 'home' ? "container mt-6" : ""}>
                 {renderView()}
             </div>
