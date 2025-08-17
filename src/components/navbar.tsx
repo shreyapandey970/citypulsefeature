@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -20,21 +19,19 @@ const navItems: { id: View, label: string, icon: React.ReactNode }[] = [
 
 export function Navbar({ activeView, setActiveView }: NavbarProps) {
     return (
-        <nav className="border-t">
-            <div className="container flex items-center justify-center">
-                <div className="flex gap-1">
-                    {navItems.map((item) => (
-                         <Button
-                            key={item.id}
-                            variant={activeView === item.id ? "secondary" : "ghost"}
-                            onClick={() => setActiveView(item.id)}
-                            className="flex-1 justify-center rounded-none"
-                        >
-                            {item.icon}
-                            {item.label}
-                        </Button>
-                    ))}
-                </div>
+        <nav className="border-t flex justify-center">
+            <div className="flex gap-1">
+                {navItems.map((item) => (
+                     <Button
+                        key={item.id}
+                        variant={activeView === item.id ? "secondary" : "ghost"}
+                        onClick={() => setActiveView(item.id)}
+                        className="flex-1 justify-center rounded-none"
+                    >
+                        {item.icon}
+                        {item.label}
+                    </Button>
+                ))}
             </div>
         </nav>
     );
