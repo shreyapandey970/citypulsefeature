@@ -315,7 +315,7 @@ export default function Home() {
           </>
         );
       case 'report':
-        return <EnviroCheckForm />;
+        return <div className="flex justify-center"><EnviroCheckForm /></div>;
       case 'view':
         return <ComplaintsView />;
       case 'route':
