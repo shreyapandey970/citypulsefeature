@@ -315,7 +315,7 @@ export default function Home() {
           </>
         );
       case 'report':
-        return <div className="flex justify-center"><EnviroCheckForm /></div>;
+        return <EnviroCheckForm />;
       case 'view':
         return <ComplaintsView />;
       case 'route':
@@ -373,7 +373,7 @@ export default function Home() {
       </header>
 
       <main>
-         <section id="reporting-tool" className={`py-12 ${activeView === 'report' ? 'flex justify-center' : ''}`}>
+         <section id="reporting-tool" className={`py-12 ${activeView === 'report' || activeView === 'view' ? 'flex justify-center' : ''}`}>
             <div className={activeView !== 'home' ? "container mt-6" : ""}>
                 {renderView()}
             </div>
@@ -382,5 +382,3 @@ export default function Home() {
     </>
   );
 }
-
-    
