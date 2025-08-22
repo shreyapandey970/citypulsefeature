@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, ChangeEvent, FormEvent } from "react";
+import { useState, useRef, ChangeEvent, FormEvent, useEffect } from "react";
 import Image from "next/image";
 import {
   Card,
@@ -34,15 +34,18 @@ import {
   RotateCcw,
   TreeDeciduous,
   LightbulbOff,
+  Camera,
+  X,
 } from "lucide-react";
 import { PotholeIcon } from "@/components/icons/pothole-icon";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 import { identifyObject, IdentifyObjectOutput } from "@/ai/flows/identify-object";
 import { assessSeverity, AssessSeverityOutput } from "@/ai/flows/assess-severity";
 import { createReport, updateReport } from "@/lib/firebase/service";
 
-type Step = "input" | "identifying" | "confirmation" | "assessing" | "result";
+type Step = "input" | "identifying" | "confirmation" | "assessing" | "result" | "camera";
 type IssueType = "pothole" | "garbage" | "streetlight" | "fallen_tree" | "other";
 type FileType = "image" | "video";
 
@@ -59,8 +62,45 @@ export function EnviroCheckForm() {
   const [identificationResult, setIdentificationResult] = useState<IdentifyObjectOutput | null>(null);
   const [assessmentResult, setAssessmentResult] = useState<AssessSeverityOutput | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+   useEffect(() => {
+    if (step !== 'camera') {
+      // Stop camera stream when leaving camera step
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+      }
+      return;
+    }
+
+    const getCameraPermission = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        setHasCameraPermission(true);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions in your browser settings.',
+        });
+      }
+    };
+
+    getCameraPermission();
+  }, [step, toast]);
+
 
   const handleGetLocation = () => {
     setIsGettingLocation(true);
@@ -107,6 +147,25 @@ export function EnviroCheckForm() {
       setFileDataUri(dataUri);
     }
   };
+
+  const handleCapture = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext('2d');
+      if (context) {
+        context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+        const dataUri = canvas.toDataURL('image/jpeg');
+        setFileDataUri(dataUri);
+        setPreviewUrl(dataUri);
+        setFileType('image');
+        handleGetLocation(); // Get location when photo is taken
+        setStep('input');
+      }
+    }
+  }
 
   const handleReset = () => {
     setStep("input");
@@ -206,6 +265,48 @@ export function EnviroCheckForm() {
   
   const renderStep = () => {
     switch (step) {
+      case "camera":
+        return (
+          <>
+            <CardHeader>
+              <CardTitle className="font-headline text-2xl">Use Camera</CardTitle>
+              <CardDescription>
+                Point your camera at the issue and capture a photo. We'll automatically get your location.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="relative aspect-video w-full">
+                <video ref={videoRef} className="w-full aspect-video rounded-md bg-black" autoPlay muted playsInline />
+                <canvas ref={canvasRef} className="hidden" />
+
+                {hasCameraPermission === false && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-md">
+                        <Alert variant="destructive" className="w-auto">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Camera Access Denied</AlertTitle>
+                            <AlertDescription>
+                                Please enable camera access in your browser settings.
+                            </AlertDescription>
+                        </Alert>
+                    </div>
+                )}
+                {hasCameraPermission === null && (
+                     <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-md">
+                         <Loader2 className="w-8 h-8 animate-spin text-white"/>
+                     </div>
+                )}
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-center gap-4">
+                <Button size="lg" onClick={handleCapture} disabled={!hasCameraPermission}>
+                    <Camera className="mr-2"/> Capture Photo
+                </Button>
+                 <Button size="lg" variant="outline" onClick={() => setStep('input')}>
+                    <X className="mr-2"/> Cancel
+                </Button>
+            </CardFooter>
+          </>
+        );
       case "identifying":
       case "assessing":
         return (
@@ -368,7 +469,17 @@ export function EnviroCheckForm() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Image or Video</Label>
+                 <Label>Evidence</Label>
+                 <div className="grid grid-cols-2 gap-2">
+                     <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
+                         <Upload className="mr-2 h-4 w-4"/>
+                         Upload File
+                     </Button>
+                     <Button type="button" variant="outline" className="w-full" onClick={() => setStep('camera')}>
+                         <Camera className="mr-2 h-4 w-4"/>
+                         Use Camera
+                     </Button>
+                 </div>
                 <div
                   className="relative border-2 border-dashed border-muted-foreground/50 rounded-lg p-6 text-center cursor-pointer hover:border-primary hover:bg-secondary transition-colors aspect-video flex items-center justify-center"
                   onClick={() => fileInputRef.current?.click()}
@@ -379,7 +490,6 @@ export function EnviroCheckForm() {
                     onChange={handleFileChange}
                     className="hidden"
                     accept="image/*,video/mp4"
-                    required
                   />
                   {previewUrl ? (
                     <>
@@ -399,6 +509,21 @@ export function EnviroCheckForm() {
                             className="object-contain rounded-md h-full w-full"
                           />
                       )}
+                       <Button 
+                            type="button" 
+                            variant="destructive" 
+                            size="icon" 
+                            className="absolute top-2 right-2 z-10 h-6 w-6"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setPreviewUrl(null);
+                                setFileDataUri(null);
+                                setFileType(null);
+                                if(fileInputRef.current) fileInputRef.current.value = "";
+                            }}
+                         >
+                            <Trash2 className="h-3 w-3"/>
+                        </Button>
                     </>
                   ) : (
                     <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
