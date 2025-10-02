@@ -3,6 +3,7 @@
 
 import { useState, useRef, ChangeEvent, FormEvent, useEffect } from "react";
 import Image from "next/image";
+import ExifReader from 'exif-reader';
 import {
   Card,
   CardContent,
@@ -40,14 +41,29 @@ import {
 import { PotholeIcon } from "@/components/icons/pothole-icon";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import dynamic from 'next/dynamic';
+import { LatLngExpression } from 'leaflet';
 
 import { identifyObject, IdentifyObjectOutput } from "@/ai/flows/identify-object";
 import { assessSeverity, AssessSeverityOutput } from "@/ai/flows/assess-severity";
 import { createReport, updateReport } from "@/lib/firebase/service";
 
+const MapView = dynamic(() => import('@/components/map-view').then(mod => mod.MapView), { 
+    ssr: false,
+    loading: () => <div className="h-[200px] w-full bg-secondary rounded-lg flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin"/></div>
+});
+
 type Step = "input" | "identifying" | "confirmation" | "assessing" | "result" | "camera";
 type IssueType = "pothole" | "garbage" | "streetlight" | "fallen_tree" | "other";
 type FileType = "image" | "video";
+
+function dmsToDecimal(degrees: number, minutes: number, seconds: number, direction: string): number {
+    let decimal = degrees + minutes / 60 + seconds / 3600;
+    if (direction === 'S' || direction === 'W') {
+        decimal = decimal * -1;
+    }
+    return decimal;
+}
 
 export function EnviroCheckForm() {
   const { toast } = useToast();
@@ -63,6 +79,8 @@ export function EnviroCheckForm() {
   const [assessmentResult, setAssessmentResult] = useState<AssessSeverityOutput | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [mapCenter, setMapCenter] = useState<LatLngExpression>([20.5937, 78.9629]); // Default to India center
+  const [mapPin, setMapPin] = useState<LatLngExpression | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -108,7 +126,10 @@ export function EnviroCheckForm() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        setLocation(`${latitude}, ${longitude}`);
+        const newLocation = `${latitude}, ${longitude}`;
+        setLocation(newLocation);
+        setMapCenter([latitude, longitude]);
+        setMapPin([latitude, longitude]);
         setIsGettingLocation(false);
         toast({ title: "Success", description: "Location acquired successfully." });
       },
@@ -141,6 +162,23 @@ export function EnviroCheckForm() {
           setFileType('video');
       } else {
           setFileType('image');
+          // Check for EXIF GPS data
+          const arrayBuffer = await file.arrayBuffer();
+          try {
+            const exif = ExifReader.load(arrayBuffer, {expanded: true});
+            const gps = exif.gps;
+            if (gps && gps.Latitude && gps.Longitude) {
+              const lat = dmsToDecimal(gps.Latitude[0], gps.Latitude[1], gps.Latitude[2], gps.LatitudeRef);
+              const lon = dmsToDecimal(gps.Longitude[0], gps.Longitude[1], gps.Longitude[2], gps.LongitudeRef);
+              const newLocation = `${lat}, ${lon}`;
+              setLocation(newLocation);
+              setMapPin([lat, lon]);
+              setMapCenter([lat, lon]);
+              toast({ title: "Location Found!", description: "Extracted location data from image."});
+            }
+          } catch (e) {
+            console.warn('Could not read EXIF data from image.', e);
+          }
       }
 
       const dataUri = await fileToDataUri(file);
@@ -180,6 +218,7 @@ export function EnviroCheckForm() {
     setAssessmentResult(null);
     setReportId(null);
     setIssueType("");
+    setMapPin(null);
     if(fileInputRef.current) fileInputRef.current.value = "";
   };
   
@@ -202,7 +241,7 @@ export function EnviroCheckForm() {
       }
       setIdentificationResult(result);
       setStep("confirmation");
-    } catch (err) {
+    } catch (err: any) {
       const errorMsg = err instanceof Error ? err.message : "An unknown error occurred.";
       setError(errorMsg);
       setStep("input");
@@ -245,12 +284,18 @@ export function EnviroCheckForm() {
       setAssessmentResult(result);
       await updateReport(newReportId, result);
 
-    } catch (err) {
+    } catch (err: any) {
       const errorMsg = err instanceof Error ? err.message : "An unknown error occurred.";
       setError(errorMsg);
       setStep("input");
       toast({ variant: "destructive", title: "An Error Occurred", description: errorMsg });
     }
+  };
+
+  const handleMapClick = (latlng: { lat: number, lng: number }) => {
+    const newLocation = `${latlng.lat}, ${latlng.lng}`;
+    setLocation(newLocation);
+    setMapPin([latlng.lat, latlng.lng]);
   };
 
   const renderIssueIcon = (issue?: string | null) => {
@@ -434,108 +479,117 @@ export function EnviroCheckForm() {
             <CardHeader>
               <CardTitle className="font-headline text-2xl">Report an Issue</CardTitle>
               <CardDescription>
-                Select an issue type, use your location, and upload an image or video to file a report.
+                Fill out the form below or drop a pin on the map to report an issue.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="issueType">Type of Issue</Label>
-                <Select value={issueType} onValueChange={(value) => setIssueType(value as IssueType)} required>
-                    <SelectTrigger id="issueType">
-                        <SelectValue placeholder="Select an issue type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="pothole">Pothole</SelectItem>
-                        <SelectItem value="garbage">Garbage</SelectItem>
-                        <SelectItem value="streetlight">Streetlight Outage</SelectItem>
-                        <SelectItem value="fallen_tree">Fallen Tree</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="location"
-                    placeholder="e.g., 40.7128, -74.0060"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    required
-                  />
-                  <Button type="button" variant="outline" onClick={handleGetLocation} disabled={isGettingLocation}>
-                    {isGettingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                 <Label>Evidence</Label>
-                 <div className="grid grid-cols-2 gap-2">
-                     <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
-                         <Upload className="mr-2 h-4 w-4"/>
-                         Upload File
-                     </Button>
-                     <Button type="button" variant="outline" className="w-full" onClick={() => setStep('camera')}>
-                         <Camera className="mr-2 h-4 w-4"/>
-                         Use Camera
-                     </Button>
-                 </div>
-                <div
-                  className="relative border-2 border-dashed border-muted-foreground/50 rounded-lg p-6 text-center cursor-pointer hover:border-primary hover:bg-secondary transition-colors aspect-video flex items-center justify-center"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept="image/*,video/mp4"
-                  />
-                  {previewUrl ? (
-                    <>
-                      {fileType === 'image' && (
-                        <Image
-                          src={previewUrl}
-                          alt="Preview"
-                          fill
-                          className="object-contain rounded-md"
-                          data-ai-hint="pothole street"
-                        />
-                      )}
-                      {fileType === 'video' && (
-                          <video
-                            src={previewUrl}
-                            controls
-                            className="object-contain rounded-md h-full w-full"
-                          />
-                      )}
-                       <Button 
-                            type="button" 
-                            variant="destructive" 
-                            size="icon" 
-                            className="absolute top-2 right-2 z-10 h-6 w-6"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setPreviewUrl(null);
-                                setFileDataUri(null);
-                                setFileType(null);
-                                if(fileInputRef.current) fileInputRef.current.value = "";
-                            }}
-                         >
-                            <Trash2 className="h-3 w-3"/>
-                        </Button>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                      <Upload className="h-8 w-8" />
-                      <p>Click or drag file to this area to upload</p>
-                      <p className="text-xs">PNG, JPG, GIF, MP4 up to 10MB</p>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-6">
+                    <div className="space-y-2">
+                        <Label htmlFor="issueType">Type of Issue</Label>
+                        <Select value={issueType} onValueChange={(value) => setIssueType(value as IssueType)} required>
+                            <SelectTrigger id="issueType">
+                                <SelectValue placeholder="Select an issue type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="pothole">Pothole</SelectItem>
+                                <SelectItem value="garbage">Garbage</SelectItem>
+                                <SelectItem value="streetlight">Streetlight Outage</SelectItem>
+                                <SelectItem value="fallen_tree">Fallen Tree</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
-                  )}
+                    <div className="space-y-2">
+                        <Label htmlFor="location">Location</Label>
+                        <div className="flex gap-2">
+                        <Input
+                            id="location"
+                            placeholder="e.g., 40.7128, -74.0060"
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value)}
+                            required
+                        />
+                        <Button type="button" variant="outline" onClick={handleGetLocation} disabled={isGettingLocation}>
+                            {isGettingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                        </Button>
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Evidence</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
+                                <Upload className="mr-2 h-4 w-4"/>
+                                Upload File
+                            </Button>
+                            <Button type="button" variant="outline" className="w-full" onClick={() => setStep('camera')}>
+                                <Camera className="mr-2 h-4 w-4"/>
+                                Use Camera
+                            </Button>
+                        </div>
+                        <div
+                        className="relative border-2 border-dashed border-muted-foreground/50 rounded-lg p-6 text-center cursor-pointer hover:border-primary hover:bg-secondary transition-colors aspect-video flex items-center justify-center"
+                        onClick={() => fileInputRef.current?.click()}
+                        >
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            className="hidden"
+                            accept="image/*,video/mp4"
+                        />
+                        {previewUrl ? (
+                            <>
+                            {fileType === 'image' && (
+                                <Image
+                                src={previewUrl}
+                                alt="Preview"
+                                fill
+                                className="object-contain rounded-md"
+                                data-ai-hint="pothole street"
+                                />
+                            )}
+                            {fileType === 'video' && (
+                                <video
+                                    src={previewUrl}
+                                    controls
+                                    className="object-contain rounded-md h-full w-full"
+                                />
+                            )}
+                            <Button 
+                                    type="button" 
+                                    variant="destructive" 
+                                    size="icon" 
+                                    className="absolute top-2 right-2 z-10 h-6 w-6"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setPreviewUrl(null);
+                                        setFileDataUri(null);
+                                        setFileType(null);
+                                        if(fileInputRef.current) fileInputRef.current.value = "";
+                                    }}
+                                >
+                                    <Trash2 className="h-3 w-3"/>
+                                </Button>
+                            </>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                            <Upload className="h-8 w-8" />
+                            <p>Click or drag file to this area to upload</p>
+                            <p className="text-xs">PNG, JPG, GIF, MP4 up to 10MB</p>
+                            </div>
+                        )}
+                        </div>
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <Label>Or Drop a Pin</Label>
+                    <MapView complaints={[]} route={mapPin ? [mapPin] : []} onMapClick={handleMapClick} center={mapCenter}/>
                 </div>
               </div>
+
               {error && (
-                <div className="flex items-center gap-2 text-destructive text-sm font-medium">
+                <div className="flex items-center gap-2 text-destructive text-sm font-medium mt-4">
                   <AlertTriangle className="h-4 w-4"/>
                   {error}
                 </div>
@@ -551,7 +605,5 @@ export function EnviroCheckForm() {
     }
   };
 
-  return <Card className="w-full transition-all duration-300 ease-in-out">{renderStep()}</Card>;
+  return <Card className="w-full max-w-4xl transition-all duration-300 ease-in-out">{renderStep()}</Card>;
 }
-
-    

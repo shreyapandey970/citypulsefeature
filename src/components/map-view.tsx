@@ -68,8 +68,15 @@ const createComplaintIcon = (issueType: IssueType, severity: 'high' | 'medium' |
   });
 };
 
-const MapUpdater = ({ complaints, route }: { complaints: Complaint[], route: LatLngExpression[] }) => {
+const MapUpdater = ({ center, route, complaints }: { center?: LatLngExpression, route: LatLngExpression[], complaints: Complaint[] }) => {
     const map = useMap();
+    
+    useEffect(() => {
+        if(center) {
+            map.setView(center, map.getZoom() < 13 ? 13 : map.getZoom());
+        }
+    }, [center, map]);
+    
     useEffect(() => {
         const validComplaintPoints = complaints
             .map(c => {
@@ -82,21 +89,39 @@ const MapUpdater = ({ complaints, route }: { complaints: Complaint[], route: Lat
             })
             .filter(Boolean) as LatLngExpression[];
 
-        const allPoints = [...validComplaintPoints, ...route];
+        let allPoints = [...validComplaintPoints];
+        if (Array.isArray(route[0])) { // Check if it's LatLngExpression[]
+            allPoints = [...allPoints, ...route];
+        } else if (route.length > 0) { // Check if it's a single pin
+             allPoints.push(route as LatLngExpression);
+        }
 
-        if (allPoints.length > 0) {
-            const bounds = L.latLngBounds(allPoints);
-            map.fitBounds(bounds, { padding: [50, 50] });
-        } else {
-            // Default view if no points are available
-             map.setView([51.505, -0.09], 5);
+        if (allPoints.length > 0 && Array.isArray(allPoints[0])) {
+             const bounds = L.latLngBounds(allPoints as L.LatLngBoundsExpression);
+             if (bounds.isValid()) {
+                map.fitBounds(bounds, { padding: [50, 50] });
+             }
         }
     }, [complaints, route, map]);
+    
     return null;
 }
 
-export function MapView({ complaints, route }: { complaints: Complaint[], route: LatLngExpression[] }) {
-    const [mapCenter, setMapCenter] = useState<LatLngExpression>([51.505, -0.09]);
+const ClickHandler = ({ onClick }: { onClick: (latlng: { lat: number, lng: number }) => void }) => {
+    const map = useMap();
+    useEffect(() => {
+        const handleClick = (e: L.LeafletMouseEvent) => {
+            onClick(e.latlng);
+        };
+        map.on('click', handleClick);
+        return () => {
+            map.off('click', handleClick);
+        };
+    }, [map, onClick]);
+    return null;
+}
+
+export function MapView({ complaints, route, onMapClick, center }: { complaints: Complaint[], route: LatLngExpression[], onMapClick?: (latlng: { lat: number, lng: number }) => void, center?: LatLngExpression }) {
     
     // Fallback for when map container fails to initialize (e.g. in some SSR scenarios or errors)
     if (typeof window === 'undefined') {
@@ -110,12 +135,12 @@ export function MapView({ complaints, route }: { complaints: Complaint[], route:
     }
 
     let routeCircle: { center: LatLngExpression, radius: number } | null = null;
-    if (route.length > 1) {
-        const routeBounds = L.latLngBounds(route);
+    if (route.length > 1 && Array.isArray(route[0])) {
+        const routeBounds = L.latLngBounds(route as L.LatLngBoundsExpression);
         const center = routeBounds.getCenter();
         const radius = center.distanceTo(routeBounds.getNorthEast());
         routeCircle = { center, radius };
-    } else if (route.length === 1) {
+    } else if (route.length === 1 && Array.isArray(route[0])) {
         routeCircle = { center: route[0], radius: 5000 }; // Default 5km radius for a single point
     }
 
@@ -128,13 +153,16 @@ export function MapView({ complaints, route }: { complaints: Complaint[], route:
       }
     }, []);
     
+    const defaultCenter = center || [20.5937, 78.9629];
+
     return (
-        <MapContainer id="map" center={mapCenter} zoom={13} scrollWheelZoom={true} className="h-[500px] w-full rounded-lg z-0">
+        <MapContainer id="map" center={defaultCenter} zoom={5} scrollWheelZoom={true} className="h-full min-h-[200px] w-full rounded-lg z-0">
             <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <MapUpdater complaints={complaints} route={route} />
+            <MapUpdater complaints={complaints} route={route} center={center} />
+            {onMapClick && <ClickHandler onClick={onMapClick} />}
             {routeCircle && (
                 <Circle 
                     center={routeCircle.center}
@@ -142,6 +170,11 @@ export function MapView({ complaints, route }: { complaints: Complaint[], route:
                     pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
                 />
             )}
+             {/* Handle single pin for dropped pin */}
+            {route.length === 1 && !Array.isArray(route[0]) && (
+                 <Marker position={route as LatLngExpression} />
+            )}
+
             {complaints.map(complaint => {
                 const parts = complaint.location.split(',').map(p => p.trim());
                 if (parts.length !== 2) return null;
