@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 const departmentEmails: { [key: string]: string } = {
   pothole: "pothole-dept@example.com",
-  garbage: "shreyapsp03@gmail.com", // Specific email for garbage
+  garbage: "sanitation-dept@example.com",
   streetlight: "electrical-dept@example.com",
   fallen_tree: "parks-dept@example.com",
   other: "general-affairs@example.com",
