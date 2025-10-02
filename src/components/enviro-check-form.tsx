@@ -584,7 +584,7 @@ export function EnviroCheckForm() {
                 </div>
                 <div className="space-y-2">
                     <Label>Or Drop a Pin</Label>
-                    <MapView complaints={[]} route={mapPin ? [mapPin] : []} onMapClick={handleMapClick} center={mapCenter}/>
+                    <MapView complaints={[]} route={[]} droppedPin={mapPin} onMapClick={handleMapClick} center={mapCenter}/>
                 </div>
               </div>
 

@@ -2,12 +2,12 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import L, { LatLngExpression } from 'leaflet';
 import Image from 'next/image';
 
 import { PotholeIcon } from "@/components/icons/pothole-icon";
-import { Trash2, LightbulbOff, TreeDeciduous } from 'lucide-react';
+import { Trash2, LightbulbOff, TreeDeciduous, Flag } from 'lucide-react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 type IssueType = 'pothole' | 'garbage' | 'streetlight' | 'fallen_tree' | 'other';
@@ -69,10 +69,32 @@ const createComplaintIcon = (issueType: IssueType, severity: 'high' | 'medium' |
 };
 
 const droppedPinIcon = L.divIcon({
-  html: `<div style="font-size: 2rem;">📌</div>`,
+  html: `<div style="font-size: 2.5rem; line-height: 1;">📌</div>`,
   className: '', // important to clear default styling
-  iconSize: [32, 32],
-  iconAnchor: [16, 32], // Point of the pin
+  iconSize: [40, 40],
+  iconAnchor: [20, 40], // Point of the pin
+});
+
+const routePointIcon = (label: string) => L.divIcon({
+    html: `
+        <div style="
+            background-color: #4f46e5; 
+            color: white; 
+            border-radius: 50%; 
+            width: 32px; height: 32px; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-weight: bold; 
+            font-size: 14px;
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            ">
+            ${label}
+        </div>`,
+    className: '',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
 });
 
 
@@ -98,13 +120,12 @@ const MapUpdater = ({ center, route, complaints }: { center?: LatLngExpression, 
             .filter(Boolean) as LatLngExpression[];
 
         let allPoints = [...validComplaintPoints];
-        if (Array.isArray(route[0])) { // Check if it's LatLngExpression[]
-            allPoints = [...allPoints, ...route];
-        } else if (route.length > 0) { // Check if it's a single pin
-             allPoints.push(route as LatLngExpression);
+
+        if (Array.isArray(route) && route.length > 0 && Array.isArray(route[0])) {
+             allPoints.push(...(route as LatLngExpression[]));
         }
 
-        if (allPoints.length > 0 && Array.isArray(allPoints[0])) {
+        if (allPoints.length > 0) {
              const bounds = L.latLngBounds(allPoints as L.LatLngBoundsExpression);
              if (bounds.isValid()) {
                 map.fitBounds(bounds, { padding: [50, 50] });
@@ -129,7 +150,7 @@ const ClickHandler = ({ onClick }: { onClick: (latlng: { lat: number, lng: numbe
     return null;
 }
 
-export function MapView({ complaints, route, onMapClick, center }: { complaints: Complaint[], route: LatLngExpression[], onMapClick?: (latlng: { lat: number, lng: number }) => void, center?: LatLngExpression }) {
+export function MapView({ complaints, route, droppedPin, onMapClick, center }: { complaints: Complaint[], route: LatLngExpression[], droppedPin?: LatLngExpression | null, onMapClick?: (latlng: { lat: number, lng: number }) => void, center?: LatLngExpression }) {
     
     // Fallback for when map container fails to initialize (e.g. in some SSR scenarios or errors)
     if (typeof window === 'undefined') {
@@ -141,17 +162,6 @@ export function MapView({ complaints, route, onMapClick, center }: { complaints:
             ></iframe>
         );
     }
-
-    let routeCircle: { center: LatLngExpression, radius: number } | null = null;
-    if (route.length > 1 && Array.isArray(route[0])) {
-        const routeBounds = L.latLngBounds(route as L.LatLngBoundsExpression);
-        const center = routeBounds.getCenter();
-        const radius = center.distanceTo(routeBounds.getNorthEast());
-        routeCircle = { center, radius };
-    } else if (route.length === 1 && Array.isArray(route[0])) {
-        routeCircle = { center: route[0], radius: 5000 }; // Default 5km radius for a single point
-    }
-
 
     // Reset Leaflet container on mount to prevent duplicate initialization
     useEffect(() => {
@@ -171,16 +181,24 @@ export function MapView({ complaints, route, onMapClick, center }: { complaints:
             />
             <MapUpdater complaints={complaints} route={route} center={center} />
             {onMapClick && <ClickHandler onClick={onMapClick} />}
-            {routeCircle && (
-                <Circle 
-                    center={routeCircle.center}
-                    radius={routeCircle.radius}
-                    pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
-                />
+            
+            {route.length > 0 && Array.isArray(route[0]) && (
+                <Polyline positions={route as LatLngExpression[]} color="blue" />
             )}
-             {/* Handle single pin for dropped pin */}
-            {route.length > 0 && !Array.isArray(route[0]) && (
-                 <Marker position={route as LatLngExpression} icon={droppedPinIcon} />
+
+            {route.map((point, index) => {
+                const label = index === 0 ? 'A' : 'B';
+                 return (
+                    <Marker key={index} position={point as LatLngExpression} icon={routePointIcon(label)}>
+                        <Popup>
+                            {label === 'A' ? 'Start Location' : 'Destination'}
+                        </Popup>
+                    </Marker>
+                 )
+            })}
+             
+            {droppedPin && (
+                 <Marker position={droppedPin} icon={droppedPinIcon} />
             )}
 
             {complaints.map(complaint => {
