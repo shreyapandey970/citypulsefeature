@@ -4,7 +4,6 @@
 import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 import type { Complaint } from "@/app/admin/page";
-import Link from "next/link";
 
 const departmentEmails: { [key: string]: string } = {
   pothole: "pothole-dept@example.com",
@@ -39,11 +38,11 @@ This is an auto-generated email from CityPulseAI.
 
 
   return (
-    <Link href={mailtoLink} target="_blank" rel="noopener noreferrer" className="no-underline">
+    <a href={mailtoLink} target="_blank" rel="noopener noreferrer" className="no-underline">
       <Button variant="outline" size="sm">
         <Send className="mr-2 h-4 w-4" />
         Notify
       </Button>
-    </Link>
+    </a>
   );
 };
