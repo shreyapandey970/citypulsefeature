@@ -1,9 +1,9 @@
-
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Send } from "lucide-react";
+import { ClipboardCopy } from "lucide-react";
 import type { Complaint } from "@/app/admin/page";
+import { useToast } from "@/hooks/use-toast";
 
 const departmentEmails: { [key: string]: string } = {
   pothole: "pothole-dept@example.com",
@@ -14,13 +14,14 @@ const departmentEmails: { [key: string]: string } = {
 };
 
 export const NotifyAuthorityButton = ({ report }: { report: Complaint }) => {
+  const { toast } = useToast();
   const recipient = departmentEmails[report.issueType] || departmentEmails.other;
   const subject = `New Issue Report: ${report.issueType.replace(/_/g, " ")} at ${report.location}`;
   const body = `
 A new issue has been reported by a user. Please find the details below:
 
 Report ID: ${report.id}
-Issue Type: ${report.issueType.replace(/_/g, " ")}
+Issue Type: ${report.issueType.replace(/_/g, ' ')}
 Severity: ${report.severity}
 Location: ${report.location}
 Status: ${report.status}
@@ -32,19 +33,30 @@ Please take the necessary action.
 
 ---
 This is an auto-generated email from CityPulseAI.
-  `;
+  `.trim();
 
-  const mailtoLink = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body.trim())}`;
-
-  const handleNotify = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleCopy = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
-    window.open(mailtoLink, '_blank');
+    try {
+      await navigator.clipboard.writeText(`To: ${recipient}\nSubject: ${subject}\n\n${body}`);
+      toast({
+        title: "Email Content Copied",
+        description: `Content for ${recipient} copied to clipboard.`,
+      });
+    } catch (err) {
+      console.error("Failed to copy text: ", err);
+      toast({
+        variant: "destructive",
+        title: "Failed to Copy",
+        description: "Could not copy content to clipboard.",
+      });
+    }
   };
 
   return (
-    <Button variant="outline" size="sm" onClick={handleNotify}>
-      <Send className="mr-2 h-4 w-4" />
-      Notify
+    <Button variant="outline" size="sm" onClick={handleCopy}>
+      <ClipboardCopy className="mr-2 h-4 w-4" />
+      Copy Email
     </Button>
   );
 };
