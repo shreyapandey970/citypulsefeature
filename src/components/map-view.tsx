@@ -68,6 +68,14 @@ const createComplaintIcon = (issueType: IssueType, severity: 'high' | 'medium' |
   });
 };
 
+const droppedPinIcon = L.divIcon({
+  html: `<div style="font-size: 2rem;">📌</div>`,
+  className: '', // important to clear default styling
+  iconSize: [32, 32],
+  iconAnchor: [16, 32], // Point of the pin
+});
+
+
 const MapUpdater = ({ center, route, complaints }: { center?: LatLngExpression, route: LatLngExpression[], complaints: Complaint[] }) => {
     const map = useMap();
     
@@ -171,8 +179,8 @@ export function MapView({ complaints, route, onMapClick, center }: { complaints:
                 />
             )}
              {/* Handle single pin for dropped pin */}
-            {route.length === 1 && !Array.isArray(route[0]) && (
-                 <Marker position={route as LatLngExpression} />
+            {route.length > 0 && !Array.isArray(route[0]) && (
+                 <Marker position={route as LatLngExpression} icon={droppedPinIcon} />
             )}
 
             {complaints.map(complaint => {
