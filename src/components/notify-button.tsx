@@ -39,15 +39,11 @@ This is an auto-generated email from CityPulseAI.
 
 
   return (
-    <Link href={mailtoLink} legacyBehavior>
-        <a target="_blank" rel="noopener noreferrer" className="no-underline">
-            <Button variant="outline" size="sm">
-                <Send className="mr-2 h-4 w-4" />
-                Notify
-            </Button>
-        </a>
+    <Link href={mailtoLink} target="_blank" rel="noopener noreferrer" className="no-underline">
+      <Button variant="outline" size="sm">
+        <Send className="mr-2 h-4 w-4" />
+        Notify
+      </Button>
     </Link>
   );
 };
-
-    
