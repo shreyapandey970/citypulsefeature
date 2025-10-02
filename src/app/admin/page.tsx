@@ -4,17 +4,18 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
-import { listenToAllReports, updateReportStatus, signOutUser } from '@/lib/firebase/service';
+import { listenToAllReports, updateReportStatus, signOutUser, deleteReport } from '@/lib/firebase/service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Building2, LogOut, CheckCircle, Hourglass, Settings, AlertTriangle } from 'lucide-react';
+import { Loader2, Building2, LogOut, CheckCircle, Hourglass, Settings, AlertTriangle, Merge, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +24,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { ThemeToggle } from '@/components/theme-toggle';
 
 type IssueType = 'pothole' | 'garbage' | 'streetlight' | 'fallen_tree' | 'other';
@@ -104,9 +118,13 @@ const StatusCell = ({ reportId, currentStatus }: { reportId: string, currentStat
 
 export default function AdminPage() {
     const router = useRouter();
+    const { toast } = useToast();
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [reports, setReports] = useState<Complaint[]>([]);
+    const [selectedReports, setSelectedReports] = useState<string[]>([]);
+    const [primaryReport, setPrimaryReport] = useState<string | null>(null);
+    const [isMerging, setIsMerging] = useState(false);
 
     useEffect(() => {
         const auth = getAuth();
@@ -145,6 +163,54 @@ export default function AdminPage() {
             unsubscribeReports();
         };
     }, [router]);
+
+    const handleSelectReport = (reportId: string, checked: boolean) => {
+        if (checked) {
+            setSelectedReports(prev => [...prev, reportId]);
+        } else {
+            setSelectedReports(prev => prev.filter(id => id !== reportId));
+        }
+    }
+    
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setSelectedReports(reports.map(r => r.id));
+        } else {
+            setSelectedReports([]);
+        }
+    }
+
+    const handleMerge = async () => {
+        if (!primaryReport) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Please select a primary report to keep.' });
+            return;
+        }
+
+        setIsMerging(true);
+        const reportsToDelete = selectedReports.filter(id => id !== primaryReport);
+
+        try {
+            for (const reportId of reportsToDelete) {
+                // Not using the service function because we don't need user auth check for admin
+                await deleteReport(reportId, true);
+            }
+
+            toast({
+                title: 'Merge Successful',
+                description: `${reportsToDelete.length} duplicate report(s) have been removed.`,
+            });
+            
+            // Reset selection
+            setSelectedReports([]);
+            setPrimaryReport(null);
+
+        } catch (error) {
+            console.error("Error merging reports:", error);
+            toast({ variant: 'destructive', title: 'Merge Failed', description: 'Could not remove duplicate reports.' });
+        } finally {
+            setIsMerging(false);
+        }
+    }
     
     const handleSignOut = async () => {
       await signOutUser();
@@ -158,6 +224,10 @@ export default function AdminPage() {
                 <Loader2 className="w-12 h-12 animate-spin text-primary" />
             </div>
         );
+    }
+
+    const getSelectedReportDetails = () => {
+        return reports.filter(r => selectedReports.includes(r.id));
     }
 
     return (
@@ -204,19 +274,77 @@ export default function AdminPage() {
         </header>
 
         <main className="container mx-auto py-12 px-4">
-             <header className="mb-8">
-                <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
-                    All Reports
-                </h1>
-                <p className="text-muted-foreground text-base mt-2">
-                    Oversee and manage all user-submitted reports. Escalated issues are highlighted in red.
-                </p>
+             <header className="mb-8 flex justify-between items-center">
+                <div>
+                    <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
+                        All Reports
+                    </h1>
+                    <p className="text-muted-foreground text-base mt-2">
+                        Oversee and manage all user-submitted reports. Escalated issues are highlighted in red.
+                    </p>
+                </div>
+                {selectedReports.length > 1 && (
+                     <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button>
+                                <Merge className="mr-2 h-4 w-4" />
+                                Merge {selectedReports.length} Duplicates
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="max-w-2xl">
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Merge Duplicate Reports</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    You have selected {selectedReports.length} reports to merge. Please select one to be the primary report. The others will be removed.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <div className="max-h-[60vh] overflow-y-auto p-1">
+                                <RadioGroup onValueChange={setPrimaryReport} className="space-y-4">
+                                {getSelectedReportDetails().map(report => (
+                                    <Label key={report.id} htmlFor={report.id} className="flex gap-4 items-start p-4 border rounded-md cursor-pointer has-[:checked]:bg-secondary">
+                                        <RadioGroupItem value={report.id} id={report.id} className="mt-1"/>
+                                        <div className="grid grid-cols-[100px_1fr] gap-4 flex-1">
+                                            <Image
+                                                src={report.imageUrl}
+                                                alt={report.issueType}
+                                                width={100}
+                                                height={66}
+                                                className="rounded-md object-cover"
+                                            />
+                                            <div className="text-sm">
+                                                <p className="font-semibold capitalize">{report.issueType.replace(/_/g, ' ')}</p>
+                                                <p className="text-muted-foreground">{report.location}</p>
+                                                <p className="text-muted-foreground">Severity: {report.severity}</p>
+                                                <p className="text-muted-foreground">Submitted: {report.complaintTime ? formatDistanceToNow(report.complaintTime, { addSuffix: true }) : 'N/A'}</p>
+                                            </div>
+                                        </div>
+                                    </Label>
+                                ))}
+                                </RadioGroup>
+                            </div>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setPrimaryReport(null)}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleMerge} disabled={!primaryReport || isMerging}>
+                                    {isMerging ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                                    Merge and Remove Duplicates
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
             </header>
             <Card>
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead className="w-[50px] text-center">
+                                    <Checkbox
+                                        onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                                        checked={selectedReports.length === reports.length && reports.length > 0}
+                                        aria-label="Select all"
+                                    />
+                                </TableHead>
                                 <TableHead className="w-[200px]">Issue</TableHead>
                                 <TableHead>Location</TableHead>
                                 <TableHead>Submitted</TableHead>
@@ -227,7 +355,20 @@ export default function AdminPage() {
                         </TableHeader>
                         <TableBody>
                             {reports.map((report) => (
-                                <TableRow key={report.id} className={report.isEscalated ? "bg-destructive/10 hover:bg-destructive/20" : ""}>
+                                <TableRow 
+                                    key={report.id} 
+                                    className={cn(
+                                        report.isEscalated ? "bg-destructive/10 hover:bg-destructive/20" : "",
+                                        selectedReports.includes(report.id) ? "bg-secondary hover:bg-secondary/80" : ""
+                                    )}
+                                >
+                                     <TableCell className="text-center">
+                                        <Checkbox
+                                            onCheckedChange={(checked) => handleSelectReport(report.id, !!checked)}
+                                            checked={selectedReports.includes(report.id)}
+                                            aria-label={`Select report ${report.id}`}
+                                        />
+                                    </TableCell>
                                     <TableCell className="font-medium">
                                         <div className="flex items-center gap-2">
                                             {report.isEscalated && <AlertTriangle className="w-4 h-4 text-destructive" title="This report has been escalated by the user."/>}
@@ -273,3 +414,5 @@ export default function AdminPage() {
         </>
     );
 }
+
+    

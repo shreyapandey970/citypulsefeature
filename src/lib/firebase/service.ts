@@ -169,18 +169,19 @@ export const updateReportEscalation = async (reportId: string) => {
     }
 };
 
-export const deleteReport = async (reportId: string) => {
+export const deleteReport = async (reportId: string, isAdmin = false) => {
     try {
         if (!db) {
             console.warn("Firebase config not found, skipping Firestore delete.");
             return;
         }
-        const user = getCurrentUser();
-        if (!user) {
-            throw new Error("User not logged in");
+        if (!isAdmin) {
+            const user = getCurrentUser();
+            if (!user) {
+                throw new Error("User not logged in");
+            }
         }
         const reportRef = doc(db, 'reports', reportId);
-        // Optional: you could add a security check here to ensure the user owns the report before deleting
         await deleteDoc(reportRef);
         console.log('Report deleted with ID: ', reportId);
     } catch (e) {
@@ -244,3 +245,5 @@ export const listenToUserReports = (callback: (reports: any[]) => void): Unsubsc
 
     return unsubscribe;
 }
+
+    
