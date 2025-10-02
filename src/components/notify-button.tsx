@@ -36,13 +36,14 @@ This is an auto-generated email from CityPulseAI.
 
   const mailtoLink = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body.trim())}`;
 
+  const handleNotify = () => {
+    window.open(mailtoLink, '_blank');
+  };
 
   return (
-    <a href={mailtoLink} target="_blank" rel="noopener noreferrer" className="no-underline">
-      <Button variant="outline" size="sm">
-        <Send className="mr-2 h-4 w-4" />
-        Notify
-      </Button>
-    </a>
+    <Button variant="outline" size="sm" onClick={handleNotify}>
+      <Send className="mr-2 h-4 w-4" />
+      Notify
+    </Button>
   );
 };
