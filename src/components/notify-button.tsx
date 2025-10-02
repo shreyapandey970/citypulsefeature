@@ -1,9 +1,11 @@
+
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { ClipboardCopy } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Send } from "lucide-react";
 import type { Complaint } from "@/app/admin/page";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const departmentEmails: { [key: string]: string } = {
   pothole: "pothole-dept@example.com",
@@ -37,30 +39,17 @@ Please take the necessary action.
 This is an auto-generated email from CityPulseAI.
   `.trim();
 
-  const handleCopy = async (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault(); // Prevent any default button action
-    try {
-      // Construct the full text to be copied, including headers
-      const emailContent = `To: ${recipient}\nSubject: ${subject}\n\n${body}`;
-      await navigator.clipboard.writeText(emailContent);
-      toast({
-        title: "Email Content Copied",
-        description: `Content for ${recipient} copied to clipboard.`,
-      });
-    } catch (err) {
-      console.error("Failed to copy text: ", err);
-      toast({
-        variant: "destructive",
-        title: "Failed to Copy",
-        description: "Could not copy content to clipboard.",
-      });
-    }
-  };
+  const mailtoLink = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   return (
-    <Button variant="outline" size="sm" onClick={handleCopy}>
-      <ClipboardCopy className="mr-2 h-4 w-4" />
-      Copy Email
-    </Button>
+    <a
+      href={mailtoLink}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+    >
+      <Send className="mr-2 h-4 w-4" />
+      Notify Authority
+    </a>
   );
 };
