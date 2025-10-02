@@ -36,7 +36,8 @@ This is an auto-generated email from CityPulseAI.
 
   const mailtoLink = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body.trim())}`;
 
-  const handleNotify = () => {
+  const handleNotify = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
     window.open(mailtoLink, '_blank');
   };
 
