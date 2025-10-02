@@ -1,7 +1,7 @@
 
 import {initializeApp, getApp, getApps, FirebaseApp} from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, User, updateProfile } from "firebase/auth";
-import {getFirestore, collection, addDoc, getDocs, query, doc, updateDoc, Firestore, serverTimestamp, onSnapshot, Unsubscribe, where, deleteDoc} from 'firebase/firestore';
+import {getFirestore, collection, addDoc, getDocs, query, doc, updateDoc, Firestore, serverTimestamp, onSnapshot, Unsubscribe, where, deleteDoc, writeBatch} from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
@@ -105,6 +105,8 @@ export const createReport = async (report: any) => {
         resolvedTime: null,
         status: 'pending',
         isEscalated: false,
+        isDuplicate: false,
+        duplicates: [],
     };
     const docRef = await addDoc(collection(db, 'reports'), reportData);
     console.log('Document written with ID: ', docRef.id);
@@ -190,6 +192,34 @@ export const deleteReport = async (reportId: string, isAdmin = false) => {
     }
 };
 
+export const mergeReports = async (primaryReportId: string, duplicateIds: string[]) => {
+    if (!db) {
+        throw new Error("Firestore is not initialized.");
+    }
+    const batch = writeBatch(db);
+
+    // Mark all duplicates
+    for (const id of duplicateIds) {
+        const duplicateRef = doc(db, 'reports', id);
+        batch.update(duplicateRef, { isDuplicate: true });
+    }
+
+    // Add duplicate IDs to the primary report
+    const primaryRef = doc(db, 'reports', primaryReportId);
+    batch.update(primaryRef, { 
+        duplicates: duplicateIds 
+    });
+
+    try {
+        await batch.commit();
+        console.log(`Successfully merged ${duplicateIds.length} reports into ${primaryReportId}.`);
+    } catch (e) {
+        console.error("Error merging reports in batch update: ", e);
+        throw e;
+    }
+};
+
+
 export const listenToAllReports = (callback: (reports: any[]) => void): Unsubscribe => {
     if (!db) {
         console.warn("Firebase config not found, not listening to reports.");
@@ -245,5 +275,3 @@ export const listenToUserReports = (callback: (reports: any[]) => void): Unsubsc
 
     return unsubscribe;
 }
-
-    
