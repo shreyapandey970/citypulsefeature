@@ -32,7 +32,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -43,12 +42,14 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion"
+} from "@/components/ui/accordion";
+import { NotifyAuthorityButton } from '@/components/notify-button';
+
 
 type IssueType = 'pothole' | 'garbage' | 'streetlight' | 'fallen_tree' | 'other';
 type Status = 'pending' | 'in progress' | 'resolved';
 
-type Complaint = {
+export type Complaint = {
     id: string;
     userId: string;
     issueType: IssueType;
@@ -464,6 +465,7 @@ export default function AdminPage() {
                                 <TableHead>Image</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Merged</TableHead>
+                                <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -516,6 +518,9 @@ export default function AdminPage() {
                                             </Badge>
                                         )}
                                     </TableCell>
+                                    <TableCell>
+                                        <NotifyAuthorityButton report={report} />
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -526,3 +531,5 @@ export default function AdminPage() {
         </>
     );
 }
+
+    
