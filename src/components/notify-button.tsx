@@ -4,6 +4,7 @@
 import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 import type { Complaint } from "@/app/admin/page";
+import Link from "next/link";
 
 const departmentEmails: { [key: string]: string } = {
   pothole: "pothole-dept@example.com",
@@ -14,10 +15,9 @@ const departmentEmails: { [key: string]: string } = {
 };
 
 export const NotifyAuthorityButton = ({ report }: { report: Complaint }) => {
-  const handleNotify = () => {
-    const recipient = departmentEmails[report.issueType] || departmentEmails.other;
-    const subject = `New Issue Report: ${report.issueType.replace(/_/g, " ")} at ${report.location}`;
-    const body = `
+  const recipient = departmentEmails[report.issueType] || departmentEmails.other;
+  const subject = `New Issue Report: ${report.issueType.replace(/_/g, " ")} at ${report.location}`;
+  const body = `
 A new issue has been reported by a user. Please find the details below:
 
 Report ID: ${report.id}
@@ -33,18 +33,20 @@ Please take the necessary action.
 
 ---
 This is an auto-generated email from CityPulseAI.
-    `;
+  `;
 
-    const mailtoLink = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body.trim())}`;
+  const mailtoLink = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body.trim())}`;
 
-    window.location.href = mailtoLink;
-  };
 
   return (
-    <Button onClick={handleNotify} variant="outline" size="sm">
-      <Send className="mr-2 h-4 w-4" />
-      Notify
-    </Button>
+    <Link href={mailtoLink} legacyBehavior>
+        <a target="_blank" rel="noopener noreferrer" className="no-underline">
+            <Button variant="outline" size="sm">
+                <Send className="mr-2 h-4 w-4" />
+                Notify
+            </Button>
+        </a>
+    </Link>
   );
 };
 
