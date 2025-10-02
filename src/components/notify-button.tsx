@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const departmentEmails: { [key: string]: string } = {
   pothole: "pothole-dept@example.com",
-  garbage: "sanitation-dept@example.com",
+  garbage: "shreyapsp03@gmail.com", // Specific email for garbage
   streetlight: "electrical-dept@example.com",
   fallen_tree: "parks-dept@example.com",
   other: "general-affairs@example.com",
@@ -17,6 +17,8 @@ export const NotifyAuthorityButton = ({ report }: { report: Complaint }) => {
   const { toast } = useToast();
   const recipient = departmentEmails[report.issueType] || departmentEmails.other;
   const subject = `New Issue Report: ${report.issueType.replace(/_/g, " ")} at ${report.location}`;
+  
+  // Create a clean email body without the long data URI
   const body = `
 A new issue has been reported by a user. Please find the details below:
 
@@ -27,7 +29,7 @@ Location: ${report.location}
 Status: ${report.status}
 Reported Time: ${report.complaintTime ? report.complaintTime.toLocaleString() : 'N/A'}
 
-View Image: ${report.imageUrl}
+An image of the issue is available in the admin dashboard.
 
 Please take the necessary action.
 
@@ -36,9 +38,11 @@ This is an auto-generated email from CityPulseAI.
   `.trim();
 
   const handleCopy = async (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
+    event.preventDefault(); // Prevent any default button action
     try {
-      await navigator.clipboard.writeText(`To: ${recipient}\nSubject: ${subject}\n\n${body}`);
+      // Construct the full text to be copied, including headers
+      const emailContent = `To: ${recipient}\nSubject: ${subject}\n\n${body}`;
+      await navigator.clipboard.writeText(emailContent);
       toast({
         title: "Email Content Copied",
         description: `Content for ${recipient} copied to clipboard.`,
